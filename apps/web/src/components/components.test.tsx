@@ -1,6 +1,7 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { MASTER_DATA } from "../lib/master-data";
+import { describeAction } from "./activity-list";
 import { Dashboard } from "./dashboard";
 import { MasterDataList } from "./master-data-list";
 import { TransportsList } from "./transport-views";
@@ -326,5 +327,19 @@ describe("Dashboard", () => {
     expect(html(<Dashboard summary={empty} canManage />)).toContain("No transports yet");
     expect(html(<Dashboard summary={empty} canManage />)).toContain("/transports/new");
     expect(html(<Dashboard summary={empty} canManage={false} />)).not.toContain("/transports/new");
+  });
+});
+
+describe("describeAction", () => {
+  it.each([
+    ["transport.created", "created a transport"],
+    ["transport.status_changed", "changed the status of a transport"],
+    ["transport.imported", "imported transports"],
+    ["document.uploaded", "uploaded a document"],
+    ["customer.archived", "archived a customer"],
+    ["location.updated", "changed a location"],
+    ["something.unknown", "something.unknown"],
+  ])("%s -> %s", (action, expected) => {
+    expect(describeAction(action)).toBe(expected);
   });
 });

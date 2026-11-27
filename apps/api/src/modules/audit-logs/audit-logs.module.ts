@@ -1,5 +1,6 @@
 import { Module } from "@nestjs/common";
+import { AuditController } from "./audit.controller.ts";
 
-/** Audit logs. Planned for a later phase. The audit_log table exists (ADR 0002); reading it through the API is not built yet. Intentionally empty: no code until its phase starts. */
-@Module({})
+/** Read access to the audit trail. Entries are written by the modules that change data. */
+@Module({ controllers: [AuditController] })
 export class AuditLogsModule {}

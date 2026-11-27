@@ -326,6 +326,7 @@ describe("OpenAPI document", () => {
   it("lists every route the application has, and every route has an access rule", () => {
     const routes = discoverRoutes(api.app.get(DiscoveryService), api.app.get(Reflector));
     expect(routes.map((route) => route.name).sort()).toEqual([
+      "AuditController.list",
       "CarrierController.create",
       "CarrierController.get",
       "CarrierController.list",

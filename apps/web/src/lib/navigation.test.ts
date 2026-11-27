@@ -45,7 +45,7 @@ describe("navigationFor", () => {
       "member:manage",
       "audit:read",
     ];
-    expect(labels(admin)).toEqual(["Overview", "Members", "Settings"]);
+    expect(labels(admin)).toEqual(["Overview", "Members", "Activity", "Settings"]);
     expect(labels(["organization:read"])).toEqual(["Overview", "Settings"]);
   });
 
@@ -57,6 +57,7 @@ describe("navigationFor", () => {
       "/carriers",
       "/locations",
       "/members",
+      "/activity",
       "/settings",
     ]);
   });
