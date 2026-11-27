@@ -1,0 +1,388 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Loadlane – Track every load. Skip the check calls.</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0A0A0B;--card:#121314;--ln:rgba(255,255,255,.09);--tx:#F4F4F2;--mu:#8E9093;--lime:#D2F23C;--limeink:#10130A;--pos:#D2F23C}
+html{scroll-behavior:smooth;scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font:400 17px/1.6 Inter,system-ui,-apple-system,"Segoe UI",sans-serif;-webkit-font-smoothing:antialiased}
+h1,h2,h3,h4{font-weight:600;letter-spacing:-.035em;line-height:1.08;margin:0}
+a{color:inherit}
+:focus-visible{outline:2px solid var(--lime);outline-offset:3px}
+.wrap{max-width:1120px;margin:0 auto;padding:0 20px}
+.nav{position:absolute;top:0;left:0;right:0;z-index:5;padding-top:env(safe-area-inset-top,0px)}
+.nav .wrap{display:flex;justify-content:space-between;align-items:center;height:68px}
+.brand{display:flex;align-items:center;gap:10px;font:600 20px Inter,sans-serif;letter-spacing:-.03em;text-decoration:none;color:#0B0B0C}
+.brand i{width:30px;height:30px;border-radius:9px;background:#0B0B0C;display:grid;place-items:center}
+.brand svg{width:16px;height:16px}
+.nl{display:flex;gap:24px;align-items:center}
+.nl a:not(.btn){color:#3a3d36;text-decoration:none;font-size:15px;font-weight:500}
+@media (max-width:820px){.nl a.t{display:none}}
+.btn{display:inline-flex;align-items:center;gap:10px;font:600 15px "JetBrains Mono",ui-monospace,Menlo,monospace;padding:15px 24px;border-radius:14px;text-decoration:none;border:0;cursor:pointer;transition:transform .25s,filter .25s,background .25s}
+.btn:hover{transform:translateY(-2px)}
+.btn.blk{background:#0B0B0C;color:#fff}
+.btn.lm{background:var(--lime);color:var(--limeink)}
+.btn.lm:hover{filter:brightness(1.06)}
+.btn.gh{background:rgba(255,255,255,.65);color:#0B0B0C;border:1px solid rgba(0,0,0,.12)}
+.btn.gr{background:#232425;color:#fff}
+.btn.sm{padding:10px 16px;font-size:13px;border-radius:11px}
+.hero{position:relative;padding:calc(128px + env(safe-area-inset-top,0px)) 0 0;text-align:center;background:linear-gradient(180deg,#F7F4E9 0%,#EEF1DC 38%,#D3E5B4 100%);overflow:hidden}
+.hero h1{font-size:clamp(40px,7.2vw,86px);color:#0B0B0C;max-width:13ch;margin:0 auto}
+.hero .sub{color:#4B4E44;max-width:54ch;margin:22px auto 30px;font-size:clamp(16px,2vw,19px)}
+.cta{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+.scene{position:relative;height:190px;margin-top:30px}
+.scene svg{position:absolute;inset:0;width:100%;height:100%}
+.hero-dash{position:relative;z-index:2;width:min(100% - 32px,980px);margin:-46px auto 0;border-radius:16px 16px 0 0;overflow:hidden;box-shadow:0 -14px 70px rgba(30,60,10,.28)}
+.hero::after{content:"";position:absolute;left:0;right:0;bottom:0;height:340px;background:linear-gradient(180deg,rgba(10,10,11,0),var(--bg) 92%);z-index:3;pointer-events:none}
+.badge{display:inline-block;font:500 12px "JetBrains Mono",ui-monospace,monospace;letter-spacing:.1em;text-transform:uppercase;padding:6px 14px;border-radius:999px;border:1px solid rgba(210,242,60,.5);color:#E3F58E;background:rgba(210,242,60,.06);box-shadow:0 0 24px rgba(210,242,60,.12)}
+section{padding:96px 0;position:relative}
+.head{text-align:center;max-width:780px;margin:0 auto 48px}
+.head h2{font-size:clamp(32px,5.2vw,56px);margin:18px 0 0}
+.head p{color:var(--mu);margin:18px auto 0;max-width:56ch}
+.card{background:var(--card);border:1px solid var(--ln);border-radius:22px;padding:26px}
+.card h3{font-size:22px;margin:0 0 8px}
+.card p{color:var(--mu);margin:0}
+.rvl{opacity:0;transform:translateY(28px);transition:opacity .8s ease,transform .8s cubic-bezier(.2,.7,.2,1)}
+.rvl.in{opacity:1;transform:none}
+.trust{padding:30px 0 10px;text-align:center}
+.trust p{margin:0 0 18px;color:var(--tx);font-weight:500}
+.chips{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
+.chips span{padding:9px 18px;border:1px solid var(--ln);border-radius:999px;color:var(--mu);font-size:15px;background:#0F1011}
+.about p{color:var(--mu);max-width:62ch;margin:18px auto 0;text-align:center}
+.att{max-width:520px;margin:48px auto 0;position:relative}
+.att::before{content:"";position:absolute;left:50%;top:-48px;height:48px;width:1px;background:linear-gradient(transparent,rgba(210,242,60,.8))}
+.att .hd{display:flex;justify-content:space-between;align-items:center;font-size:22px;font-weight:500;letter-spacing:-.02em}
+.att .hd b{font:500 13px "JetBrains Mono",monospace;color:var(--lime);background:rgba(210,242,60,.1);border-radius:8px;padding:3px 9px}
+.att ul{list-style:none;margin:16px 0 0;padding:0}
+.att li{display:flex;gap:14px;padding:14px 0;border-top:1px solid var(--ln);opacity:0;transform:translateX(-14px);transition:opacity .6s ease,transform .6s ease}
+.att.in li{opacity:1;transform:none}
+.att li em{font-style:normal;color:var(--lime);font-size:18px;line-height:1.4}
+.att small{display:block;color:var(--mu);font-size:13px}
+.three{display:grid;gap:18px}
+.ico{width:44px;height:44px;border-radius:12px;background:rgba(210,242,60,.1);border:1px solid rgba(210,242,60,.25);display:grid;place-items:center;margin-bottom:18px}
+.ico svg{width:22px;height:22px;stroke:var(--lime);fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.dwrap{position:relative;overflow:hidden;width:100%}
+.car{position:relative}
+.track{display:flex;gap:20px;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.track::-webkit-scrollbar{display:none}
+.slide{flex:0 0 100%;scroll-snap-align:center;min-width:0}
+.frame{border-radius:18px;overflow:hidden;border:1px solid var(--ln);box-shadow:0 30px 80px rgba(0,0,0,.45)}
+.slide h3{font-size:22px;margin:22px 0 6px}
+.slide p{color:var(--mu);margin:0;max-width:60ch}
+.carbar{display:flex;gap:10px;align-items:center;margin-top:24px}
+.arrow{width:46px;height:46px;border-radius:12px;background:#151617;border:1px solid var(--ln);color:#fff;font-size:18px;cursor:pointer;transition:background .2s}
+.arrow:hover{background:#1f2022}
+.dots{display:flex;gap:6px;margin-left:12px}
+.dots i{width:7px;height:7px;border-radius:99px;background:rgba(255,255,255,.2);transition:all .3s}
+.dots i.on{background:var(--lime);width:22px}
+.note{color:var(--mu);font-size:13px;margin-left:auto}
+.fg{display:grid;gap:18px}
+.fv{height:214px;border-radius:14px;background:#0C0D0E;border:1px solid var(--ln);margin-bottom:22px;display:grid;place-items:center;overflow:hidden;padding:16px}
+.fv>*{width:100%}
+.fv *{animation-play-state:paused}
+.in .fv *{animation-play-state:running}
+.fv svg{display:block;max-width:400px;margin:0 auto}
+.flow{fill:none;stroke:var(--lime);stroke-opacity:.7;stroke-width:1.8;stroke-dasharray:5 7;animation:flow 1s linear infinite}
+.src{fill:#161718;stroke:rgba(255,255,255,.14)}
+.lbl{fill:#E8E8E6;font:500 12.5px Inter,sans-serif}
+.core{fill:var(--lime)}
+.pulse{fill:none;stroke:var(--lime);stroke-width:2;transform-box:fill-box;transform-origin:center;animation:pulse 2s ease-out infinite}
+@keyframes flow{to{stroke-dashoffset:-12}}
+@keyframes pulse{from{transform:scale(1);opacity:.7}to{transform:scale(1.9);opacity:0}}
+.tl{position:relative;padding-top:6px}
+.tl-line{position:absolute;left:30px;right:30px;top:13px;height:3px;background:rgba(255,255,255,.12);border-radius:2px}
+.tl-line i{display:block;height:100%;width:0;background:var(--lime);border-radius:2px;transition:width 1s linear}
+.tl ol{display:flex;justify-content:space-between;list-style:none;margin:0;padding:0;position:relative}
+.tl li{position:relative;width:60px;text-align:center;padding-top:30px;font-size:12.5px;color:var(--mu);transition:color .3s}
+.tl li::before{content:"";position:absolute;top:0;left:50%;width:16px;height:16px;margin-left:-8px;border-radius:50%;background:#0C0D0E;border:3px solid #2a2b2d;transition:background .3s,border-color .3s}
+.tl li.on{color:#fff}.tl li.on::before{background:var(--lime);border-color:var(--lime)}
+.nt{transition:none!important}
+.stack{display:grid;gap:9px}
+.stack div{display:flex;align-items:center;gap:10px;background:#141516;border:1px solid var(--ln);border-radius:10px;padding:11px 14px;font-size:14.5px;animation:s1 7s ease-out infinite}
+.stack div:nth-child(2){animation-name:s2}.stack div:nth-child(3){animation-name:s3}
+.stack b{font-weight:500;flex:1}.stack i{font-style:normal;font-size:12.5px;color:var(--mu)}.stack u{text-decoration:none;color:var(--lime);font-weight:700}
+@keyframes s1{0%{opacity:0;transform:translateX(40px)}8%,88%{opacity:1;transform:none}96%,100%{opacity:0;transform:none}}
+@keyframes s2{0%,10%{opacity:0;transform:translateX(40px)}18%,88%{opacity:1;transform:none}96%,100%{opacity:0;transform:none}}
+@keyframes s3{0%,20%{opacity:0;transform:translateX(40px)}28%,88%{opacity:1;transform:none}96%,100%{opacity:0;transform:none}}
+.alert{position:relative;min-height:170px}
+.alert .pills{position:relative;height:36px}
+.alert .p{position:absolute;left:0;top:0;padding:6px 13px;border-radius:99px;font-weight:600;font-size:14px}
+.alert .p.ok{background:rgba(210,242,60,.15);color:var(--lime);animation:okp 8s infinite}
+.alert .p.late{background:rgba(255,176,32,.16);color:#FFB020;opacity:0;animation:latep 8s infinite}
+.alert .eta{margin:10px 0 16px;color:var(--mu);font-size:14.5px}.alert .eta b{color:#fff;font-size:20px;font-weight:600}
+.toast{background:#141516;border:1px solid rgba(255,176,32,.55);border-radius:10px;padding:11px 14px;font-size:14px;opacity:0;animation:toast 8s infinite}
+@keyframes okp{0%,36%{opacity:1}42%,94%{opacity:0}100%{opacity:1}}
+@keyframes latep{0%,36%{opacity:0}42%,94%{opacity:1}100%{opacity:0}}
+@keyframes toast{0%,42%{opacity:0;transform:translateY(14px)}50%,90%{opacity:1;transform:none}97%,100%{opacity:0}}
+.carr{display:grid;gap:15px}.carr div{display:grid;gap:6px;font-size:14.5px}.carr span{display:flex;justify-content:space-between}.carr em{font-style:normal;color:var(--mu)}
+.carr s{display:block;height:8px;border-radius:4px;background:rgba(255,255,255,.1);text-decoration:none;overflow:hidden}
+.carr s::after{content:"";display:block;height:100%;width:0;background:var(--lime);border-radius:4px;animation:bar 6s ease-out infinite}
+@keyframes bar{0%{width:0}35%,88%{width:var(--w)}100%{width:0}}
+.dial{position:relative;width:min(100%,340px);aspect-ratio:1;margin:0 auto}
+.dial svg{position:absolute;inset:0;width:100%;height:100%}
+#arc{transition:stroke-dashoffset 1.1s cubic-bezier(.6,0,.2,1)}
+.ticks{transform-origin:150px 150px;animation:spin 90s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.dialc{position:absolute;inset:17%;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}
+.dialc svg{position:static;width:34px;height:34px;stroke:#fff;fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;margin-bottom:10px}
+.dialc h3{font-size:19px;letter-spacing:-.02em;transition:opacity .3s}
+.dialc p{color:#B9BCB0;font-size:13.5px;line-height:1.45;margin:8px 0 0;transition:opacity .3s}
+.ddots{display:flex;justify-content:center;gap:8px;margin-top:26px}
+.ddots button{width:10px;height:10px;border-radius:99px;border:0;background:rgba(255,255,255,.2);cursor:pointer;padding:0;transition:all .3s}
+.ddots button[aria-pressed="true"]{background:var(--lime);width:28px}
+.stats{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}
+.stat{position:relative;overflow:hidden;min-height:190px;display:flex;flex-direction:column;justify-content:flex-end}
+.stat::before{content:"";position:absolute;right:-30px;top:-30px;width:140px;height:140px;background:rgba(255,255,255,.04);clip-path:polygon(50% 0,62% 38%,100% 50%,62% 62%,50% 100%,38% 62%,0 50%,38% 38%)}
+.stat .num{font-size:clamp(44px,8vw,64px);font-weight:600;letter-spacing:-.04em;line-height:1}
+.stat h3{font-size:18px;margin:10px 0 4px}
+.tiles{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+.tile{background:var(--card);border:1px solid var(--ln);border-radius:16px;padding:18px;display:flex;flex-direction:column;gap:10px;min-height:96px;justify-content:space-between;transition:transform .3s,border-color .3s}
+.tile:hover{transform:translateY(-4px);border-color:rgba(210,242,60,.4)}
+.tile b{font-weight:600;font-size:16px;letter-spacing:-.02em}
+.tile span{align-self:flex-start;font:500 11px "JetBrains Mono",monospace;letter-spacing:.06em;text-transform:uppercase;padding:3px 8px;border-radius:6px;background:rgba(255,255,255,.07);color:var(--mu)}
+.tile span.l{background:rgba(210,242,60,.14);color:var(--lime)}
+.tg{display:inline-flex;background:#121314;border:1px solid var(--ln);border-radius:12px;padding:4px;margin:0 auto 34px}
+.tg button{background:transparent;color:var(--mu);border:0;padding:10px 22px;border-radius:9px;font:500 14.5px Inter,sans-serif;cursor:pointer}
+.tg button[aria-pressed="true"]{background:#242527;color:#fff}
+.plans{display:grid;gap:18px}
+.plan{text-align:center;display:flex;flex-direction:column}
+.plan.pop{border-color:rgba(210,242,60,.5);box-shadow:0 0 70px rgba(210,242,60,.08)}
+.plan h3{font-size:24px}
+.plan .d{color:var(--mu);font-size:15px;margin:8px 0 0;min-height:46px}
+.price{font-size:60px;font-weight:600;letter-spacing:-.05em;line-height:1;margin:24px 0 4px}
+.price small{font-size:15px;font-weight:400;color:var(--mu);letter-spacing:0}
+.flip{animation:flip .4s ease}
+@keyframes flip{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.plan ul{list-style:none;padding:0;margin:22px 0 26px;text-align:left;flex:1;display:grid;gap:10px}
+.plan li{padding-left:28px;position:relative;font-size:15.5px}
+.plan li::before{content:"\2713";position:absolute;left:0;color:#fff}
+.plan .btn{justify-content:center}
+.faq{max-width:780px;margin:0 auto}
+details{border-top:1px solid var(--ln);padding:22px 0}
+details:last-child{border-bottom:1px solid var(--ln)}
+summary{cursor:pointer;list-style:none;display:flex;justify-content:space-between;gap:16px;font-size:19px;font-weight:500;letter-spacing:-.02em}
+summary::-webkit-details-marker{display:none}
+summary::after{content:"+";font-size:28px;line-height:1;color:var(--lime);transition:transform .3s}
+details[open] summary::after{transform:rotate(45deg)}
+details p{color:var(--mu);max-width:62ch;margin:12px 0 0}
+.final{text-align:center}
+.final h2{font-size:clamp(34px,6vw,64px);max-width:16ch;margin:18px auto 0}
+.final p{color:var(--mu);margin:16px auto 0;max-width:50ch}
+.wl{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:30px}
+.wl input{flex:1 1 260px;max-width:340px;font:400 16px Inter,sans-serif;padding:15px 18px;border-radius:14px;border:1px solid var(--ln);background:#121314;color:#fff}
+#msg{margin-top:14px;min-height:1.6em;color:var(--lime);font-weight:500}
+footer{border-top:1px solid var(--ln);padding:30px 0 calc(40px + env(safe-area-inset-bottom,0px));color:var(--mu);font-size:14px}
+footer .wrap{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.mark{font:700 clamp(60px,17vw,220px)/.9 Inter,sans-serif;letter-spacing:-.06em;text-align:center;color:rgba(255,255,255,.05);overflow:hidden;margin-top:30px;user-select:none}
+/* dashboard mock */
+.dash{--bg:#0E0F10;--pn:#151617;--ln:rgba(255,255,255,.09);--ink:#F3F4F2;--mu:#8D9093;--lime:#D2F23C;--pos:#D2F23C;--limeink:#10130A;position:absolute;left:0;top:0;width:920px;height:540px;transform-origin:0 0;background:var(--bg);color:var(--ink);display:grid;grid-template-columns:150px 1fr;overflow:hidden;font:500 11px/1.4 Inter,system-ui,sans-serif;text-align:left}
+.dash.light{--bg:#F3F4EF;--pn:#FFFFFF;--ln:rgba(0,0,0,.09);--ink:#131513;--mu:#6A6F6A;--lime:#C8EC2A;--pos:#3B7A00}
+.dash *{box-sizing:border-box}
+.ds{background:var(--pn);border-right:1px solid var(--ln);padding:14px 10px;display:flex;flex-direction:column;gap:2px}
+.dlogo{display:flex;align-items:center;gap:7px;font-weight:700;font-size:13px;margin:0 6px 14px}
+.dlogo i{width:18px;height:18px;border-radius:5px;background:var(--lime);display:block}
+.ds a{display:block;padding:7px 9px;border-radius:7px;color:var(--mu);font-size:11.5px}
+.ds a.on{background:rgba(127,127,127,.14);color:var(--ink)}
+.dws{margin-top:auto;padding:8px;border:1px solid var(--ln);border-radius:8px;font-size:11px}.dws small{color:var(--mu)}
+.dm{padding:16px 18px;display:flex;flex-direction:column;gap:10px;min-width:0}
+.dt{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.dt h4{font-size:17px;font-weight:600;letter-spacing:-.02em}
+.dcrumb,.dsub{color:var(--mu);font-size:10.5px}
+.dbtn{background:var(--lime);color:var(--limeink);font-weight:600;font-size:11px;padding:6px 11px;border-radius:7px;white-space:nowrap;display:inline-block}
+.dbtn.dgh{background:transparent;color:var(--ink);border:1px solid var(--ln);margin-top:8px}
+.da{display:flex;gap:8px;align-items:center;background:color-mix(in srgb,var(--lime) 15%,transparent);border:1px solid color-mix(in srgb,var(--lime) 45%,transparent);border-radius:8px;padding:7px 10px;font-size:11px}
+.pdot{flex:none;width:7px;height:7px;border-radius:50%;background:var(--pos);animation:pd 1.6s ease-out infinite}
+@keyframes pd{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--pos) 60%,transparent)}100%{box-shadow:0 0 0 8px transparent}}
+.dk{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.dc{background:var(--pn);border:1px solid var(--ln);border-radius:10px;padding:10px 12px;min-width:0}
+.dc h5{margin:0 0 8px;font-size:11px;font-weight:600;display:flex;justify-content:space-between}
+.dnum{color:var(--pos);font-weight:600}
+.dk .l{color:var(--mu);font-size:10px}.dk .v{font-size:21px;font-weight:600;letter-spacing:-.03em}.dk .s{font-size:10px;color:var(--pos)}
+.d2{display:grid;grid-template-columns:1.55fr 1fr;gap:10px;flex:1;min-height:0}
+.dcol{display:flex;flex-direction:column;gap:10px}
+.dr{display:grid;grid-template-columns:62px 1fr 84px 52px 54px;gap:8px;align-items:center;padding:6px 0;border-top:1px solid var(--ln);font-size:10.5px}
+.dr.dd{grid-template-columns:1.5fr 70px 82px 84px}
+.dr b{font-weight:600}
+.dchip{display:inline-block;padding:2px 7px;border-radius:5px;background:rgba(127,127,127,.15);font-size:10px;white-space:nowrap}
+.dchip.ok{background:color-mix(in srgb,var(--lime) 22%,transparent);color:var(--pos)}
+.dchip.late{background:rgba(255,176,32,.18);color:#C27A00}
+.dash:not(.light) .dchip.late{color:#FFB020}
+.dseg{display:grid;grid-template-columns:repeat(6,1fr);gap:2px}
+.dseg i{height:4px;background:rgba(127,127,127,.25);border-radius:2px}.dseg i.on{background:var(--lime)}
+.dat{display:flex;gap:7px;padding:6px 0;border-top:1px solid var(--ln);font-size:10.5px}
+.dat em{font-style:normal;color:var(--pos)}.dat small{display:block;color:var(--mu);font-size:9.5px}
+.dbars{display:flex;align-items:flex-end;gap:6px;height:64px}
+.dbars i{flex:1;background:color-mix(in srgb,var(--lime) 75%,transparent);border-radius:3px 3px 0 0;height:0;transition:height .9s cubic-bezier(.2,.7,.2,1)}
+.in .dbars i{height:var(--h)}
+.dchips{display:flex;gap:6px}
+.d3{display:grid;grid-template-columns:1fr 1.4fr 1.2fr;gap:10px;flex:1;min-height:0}
+.dtl{list-style:none;margin:0;padding:0}
+.dtl li{position:relative;padding:0 0 11px 20px;color:var(--mu);font-size:10.5px}
+.dtl li small{display:block;font-size:9.5px}
+.dtl li::before{content:"";position:absolute;left:0;top:2px;width:10px;height:10px;border-radius:50%;border:2px solid rgba(127,127,127,.35)}
+.dtl li::after{content:"";position:absolute;left:4px;top:14px;bottom:0;width:2px;background:rgba(127,127,127,.2)}
+.dtl li:last-child::after{display:none}
+.dtl li.done{color:var(--ink)}.dtl li.done::before{background:var(--lime);border-color:var(--lime)}
+.dmap{display:flex;flex-direction:column}
+.dmap svg{width:100%;height:auto;color:var(--ink);flex:none}
+.deta{margin-top:auto;display:flex;justify-content:space-between;font-size:10.5px;padding-top:6px}.deta span{color:var(--mu)}
+.ddocs,.dact{list-style:none;margin:0;padding:0}
+.ddocs li{display:flex;justify-content:space-between;gap:6px;padding:6px 0;border-top:1px solid var(--ln);font-size:10.5px}
+.dact li{display:flex;gap:10px;padding:4px 0;font-size:10.5px;color:var(--mu)}.dact time{color:var(--ink);font-weight:600;min-width:52px}
+.dsrc{display:flex;justify-content:space-between;padding:9px 0;border-top:1px solid var(--ln);font-size:11px}.dsrc b{font-size:15px}
+.dphonebg{display:flex!important;justify-content:center;align-items:center;background:radial-gradient(520px 380px at 50% 40%,color-mix(in srgb,var(--lime) 40%,var(--bg)),var(--bg))}
+.dphone{width:230px;background:var(--pn);border:2px solid var(--ink);border-radius:26px;padding:22px 16px;text-align:center}
+.dpl{font-size:9px;color:var(--mu);margin-bottom:12px}
+.dphone h4{font-size:20px}
+.dnow{margin:14px 0 8px;text-align:left}.dnow small{display:block;color:var(--mu)}.dnow b{font-size:15px}
+.dbig{margin-top:12px;background:var(--lime);color:var(--limeink);font-weight:700;font-size:12px;padding:12px;border-radius:10px}
+.dbig.dghost{background:transparent;color:var(--ink);border:1px solid var(--ln)}
+.dfloat{position:absolute;background:var(--pn);border:1px solid var(--ln);padding:8px 12px;border-radius:10px;font-size:11px;font-weight:600;animation:fl 5s ease-in-out infinite;box-shadow:0 10px 30px rgba(0,0,0,.2)}
+.f1{left:90px;top:130px}.f2{right:90px;top:260px;animation-delay:-1.6s}.f3{left:120px;bottom:90px;animation-delay:-3s}
+@keyframes fl{0%,100%{transform:translateY(0)}50%{transform:translateY(-9px)}}
+@media (min-width:900px){
+ .three{grid-template-columns:repeat(3,1fr)}
+ .fg{grid-template-columns:1fr 1fr}.fg .wide{grid-column:span 2}
+ .stats{grid-template-columns:repeat(4,1fr)}
+ .tiles{grid-template-columns:repeat(4,1fr)}
+ .plans{grid-template-columns:repeat(3,1fr)}
+}
+@media (prefers-reduced-motion:reduce){
+ html{scroll-behavior:auto}.rvl,.att li{opacity:1;transform:none;transition:none}
+ .fv *,.dash *,.ticks,.flow,.pulse{animation:none!important}.stack div{opacity:1!important}.alert .p.late{display:none}.alert .p.ok{opacity:1}.toast{opacity:1}.carr s::after{width:var(--w)}.dbars i{height:var(--h);transition:none}
+}
+</style></head>
+<body>
+<header class="nav"><div class="wrap"><a class="brand" href="#top"><i><svg viewBox="0 0 16 16" fill="none" stroke="#D2F23C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12h3l2-8h2l2 8h3"/></svg></i>Loadlane</a>
+<nav class="nl"><a class="t" href="#features">Features</a><a class="t" href="#dashboard">Dashboard</a><a class="t" href="#pricing">Pricing</a><a class="btn blk sm" href="#join">Join the waitlist</a></nav></div></header>
+<main id="top">
+<div class="hero">
+ <div class="wrap"><h1>Track every load. Skip the check calls.</h1>
+ <p class="sub">Loadlane gives shippers and carriers one live view from gate check-in to delivery, with documents attached automatically.</p>
+ <div class="cta"><a class="btn blk" href="#join"><span>Join the waitlist</span></a><a class="btn gh" href="https://claude.ai/artifact/Exwku3pXbwzhdDKkQi3qHy" rel="noopener"><span>Try the app demo</span></a></div></div>
+ <div class="scene"><svg viewBox="0 0 1200 190" preserveAspectRatio="xMidYMax slice" aria-hidden="true">
+<path d="M0 70C150 20 300 40 450 62C600 84 760 12 900 30C1040 48 1130 74 1200 56V190H0Z" fill="#BFD99C"/>
+<path d="M0 108C140 66 280 92 420 104C580 118 700 52 860 70C1000 86 1100 112 1200 96V190H0Z" fill="#9FC972"/>
+<path d="M0 150C160 118 300 142 460 150C640 160 800 108 960 124C1080 136 1150 150 1200 146V190H0Z" fill="#7CB04F"/>
+<path id="road" d="M-20 142C200 120 380 134 560 114C760 92 940 108 1220 78" fill="none" stroke="#3B4A2D" stroke-width="12" opacity=".6"/>
+<path d="M-20 142C200 120 380 134 560 114C760 92 940 108 1220 78" fill="none" stroke="#F3F3E6" stroke-width="1.5" stroke-dasharray="9 11" opacity=".85"/>
+<g><rect x="-16" y="-6" width="22" height="11" rx="2" fill="#0B0B0C"/><rect x="7" y="-4" width="9" height="9" rx="2" fill="#D2F23C"/><animateMotion dur="16s" repeatCount="indefinite" rotate="auto"><mpath href="#road"/></animateMotion></g>
+<g><rect x="-16" y="-6" width="22" height="11" rx="2" fill="#0B0B0C"/><rect x="7" y="-4" width="9" height="9" rx="2" fill="#FFFFFF"/><animateMotion dur="16s" begin="-8s" repeatCount="indefinite" rotate="auto"><mpath href="#road"/></animateMotion></g>
+</svg></div>
+ <div class="hero-dash"><div class="dwrap obs" data-crop="0.86"><div class="dash "><aside class="ds"><div class="dlogo"><i></i>Loadlane</div><a class="on">Overview</a><a class="">Loads</a><a class="">Documents</a><a class="">Carriers</a><a class="">Alerts</a><a class="">Integrations</a><div class="dws">Houston plant<br><small>Team plan</small></div></aside><main class="dm"><div class="dt"><div><h4>Good morning, Alex</h4><div class="dsub">3 loads need your attention today</div></div><span class="dbtn">New load</span></div><div class="da"><span class="pdot"></span><span><b>LL-48214 is running 25 min late.</b> Customer notified, new ETA 1:05 PM.</span></div><div class="dk"><div class="dc"><div class="l">Active loads</div><div class="v">24</div><div class="s">+3 today</div></div><div class="dc"><div class="l">Documents attached</div><div class="v">138</div><div class="s">auto-matched</div></div><div class="dc"><div class="l">Avg. dwell time</div><div class="v">42 min</div><div class="s">-6 min vs last week</div></div><div class="dc"><div class="l">On-time arrival</div><div class="v">94%</div><div class="s">this month</div></div></div><div class="d2"><div class="dc"><h5>Active loads</h5><div class="dr"><b>LL-48213</b><span>Houston to Chicago</span><span class="dchip ">On the road</span><span>9:30 AM</span><span class="dseg"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class=""></i></span></div><div class="dr"><b>LL-48214</b><span>Baton Rouge to Atlanta</span><span class="dchip late">Late +25 min</span><span>1:05 PM</span><span class="dseg"><i class="on"></i><i class="on"></i><i class=""></i><i class=""></i><i class=""></i><i class=""></i></span></div><div class="dr"><b>LL-48215</b><span>Houston to Dallas</span><span class="dchip ">Gate check-in</span><span>7:00 PM</span><span class="dseg"><i class="on"></i><i class=""></i><i class=""></i><i class=""></i><i class=""></i><i class=""></i></span></div><div class="dr"><b>LL-48217</b><span>Houston to Austin</span><span class="dchip ">Loading</span><span>11:40 AM</span><span class="dseg"><i class="on"></i><i class="on"></i><i class=""></i><i class=""></i><i class=""></i><i class=""></i></span></div><div class="dr"><b>LL-48216</b><span>Houston to Memphis</span><span class="dchip ok">Delivered</span><span>Done</span><span class="dseg"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i></span></div></div><div class="dcol"><div class="dc"><h5>Needs your attention <span class="dnum">3</span></h5><div class="dat"><em>&#8599;</em><div>Send pickup confirmation<small>LL-48214 · 4 min ago</small></div></div><div class="dat"><em>&#8599;</em><div>Weighing ticket missing<small>LL-48215 · 12 min ago</small></div></div><div class="dat"><em>&#8599;</em><div>Customer asked for ETA<small>LL-48213 · 26 min ago</small></div></div></div><div class="dc"><h5>Loads per day</h5><div class="dbars"><i style="--h:28px;transition-delay:0ms"></i><i style="--h:40px;transition-delay:70ms"></i><i style="--h:34px;transition-delay:140ms"></i><i style="--h:52px;transition-delay:210ms"></i><i style="--h:46px;transition-delay:280ms"></i><i style="--h:60px;transition-delay:350ms"></i><i style="--h:38px;transition-delay:420ms"></i></div></div></div></div></main></div></div></div>
+</div>
+
+<div class="trust wrap"><p>Made for plant logistics, shippers, carriers and 3PLs</p><div class="chips"><span>Shippers</span><span>Carriers</span><span>3PLs</span><span>Plant logistics</span><span>Dispatch teams</span></div></div>
+
+<section class="about"><div class="wrap">
+ <div class="head rvl"><span class="badge">About</span><h2>Built because loads shouldn’t need five phone calls.</h2></div>
+ <p class="rvl">Loadlane started from daily work in industrial logistics: booking transports, chasing carriers, and waiting for the right document. The information exists, but it is scattered across emails, calls, and systems. Loadlane puts it on one screen, so your team can focus on the decisions only people can make.</p>
+ <div class="card att" data-io><div class="hd">Needs your attention <b>3</b></div><ul><li><em>&#8599;</em><div>Send pickup confirmation<small>LL-48214 · 4 minutes ago</small></div></li><li><em>&#8599;</em><div>Weighing ticket missing<small>LL-48215 · 12 minutes ago</small></div></li><li><em>&#8599;</em><div>Customer asked for ETA<small>LL-48213 · 26 minutes ago</small></div></li></ul></div>
+</div></section>
+
+<section><div class="wrap">
+ <div class="head rvl"><span class="badge">Problem</span><h2>Updates are everywhere. Answers are slow.</h2><p>Teams spend hours chasing status and paperwork. That costs time, and customers notice.</p></div>
+ <div class="three">
+  <div class="card rvl"><div class="ico"><svg viewBox="0 0 24 24"><path d="M3 5h18M3 12h12M3 19h8"/></svg></div><h3>Scattered updates</h3><p>Status lives in emails, phone calls, and a system nobody trusts. Finding the real answer takes too long.</p></div>
+  <div class="card rvl" style="transition-delay:90ms"><div class="ico"><svg viewBox="0 0 24 24"><path d="M7 3h7l5 5v13H7z"/><path d="M14 3v5h5M10 13h6M10 17h4"/></svg></div><h3>Lost documents</h3><p>Weighing tickets and bills of lading arrive in the wrong inbox, or not at all, and get found when it is too late.</p></div>
+  <div class="card rvl" style="transition-delay:180ms"><div class="ico"><svg viewBox="0 0 24 24"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2z"/></svg></div><h3>Endless check calls</h3><p>Customers ask where their load is. Someone has to call the driver, the gate, and the carrier to find out.</p></div>
+ </div></div></section>
+
+<section id="dashboard"><div class="wrap">
+ <div class="head rvl"><span class="badge">Dashboard</span><h2>This is what your team gets.</h2><p>One workspace for every load, document and alert. Swipe through the screens.</p></div>
+ <div class="car rvl"><div class="track" id="track"><div class="slide"><div class="frame"><div class="dwrap obs" data-crop="1"><div class="dash light"><aside class="ds"><div class="dlogo"><i></i>Loadlane</div><a class="on">Overview</a><a class="">Loads</a><a class="">Documents</a><a class="">Carriers</a><a class="">Alerts</a><a class="">Integrations</a><div class="dws">Houston plant<br><small>Team plan</small></div></aside><main class="dm"><div class="dt"><div><h4>Good morning, Alex</h4><div class="dsub">3 loads need your attention today</div></div><span class="dbtn">New load</span></div><div class="da"><span class="pdot"></span><span><b>LL-48214 is running 25 min late.</b> Customer notified, new ETA 1:05 PM.</span></div><div class="dk"><div class="dc"><div class="l">Active loads</div><div class="v">24</div><div class="s">+3 today</div></div><div class="dc"><div class="l">Documents attached</div><div class="v">138</div><div class="s">auto-matched</div></div><div class="dc"><div class="l">Avg. dwell time</div><div class="v">42 min</div><div class="s">-6 min vs last week</div></div><div class="dc"><div class="l">On-time arrival</div><div class="v">94%</div><div class="s">this month</div></div></div><div class="d2"><div class="dc"><h5>Active loads</h5><div class="dr"><b>LL-48213</b><span>Houston to Chicago</span><span class="dchip ">On the road</span><span>9:30 AM</span><span class="dseg"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class=""></i></span></div><div class="dr"><b>LL-48214</b><span>Baton Rouge to Atlanta</span><span class="dchip late">Late +25 min</span><span>1:05 PM</span><span class="dseg"><i class="on"></i><i class="on"></i><i class=""></i><i class=""></i><i class=""></i><i class=""></i></span></div><div class="dr"><b>LL-48215</b><span>Houston to Dallas</span><span class="dchip ">Gate check-in</span><span>7:00 PM</span><span class="dseg"><i class="on"></i><i class=""></i><i class=""></i><i class=""></i><i class=""></i><i class=""></i></span></div><div class="dr"><b>LL-48217</b><span>Houston to Austin</span><span class="dchip ">Loading</span><span>11:40 AM</span><span class="dseg"><i class="on"></i><i class="on"></i><i class=""></i><i class=""></i><i class=""></i><i class=""></i></span></div><div class="dr"><b>LL-48216</b><span>Houston to Memphis</span><span class="dchip ok">Delivered</span><span>Done</span><span class="dseg"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i></span></div></div><div class="dcol"><div class="dc"><h5>Needs your attention <span class="dnum">3</span></h5><div class="dat"><em>&#8599;</em><div>Send pickup confirmation<small>LL-48214 · 4 min ago</small></div></div><div class="dat"><em>&#8599;</em><div>Weighing ticket missing<small>LL-48215 · 12 min ago</small></div></div><div class="dat"><em>&#8599;</em><div>Customer asked for ETA<small>LL-48213 · 26 min ago</small></div></div></div><div class="dc"><h5>Loads per day</h5><div class="dbars"><i style="--h:28px;transition-delay:0ms"></i><i style="--h:40px;transition-delay:70ms"></i><i style="--h:34px;transition-delay:140ms"></i><i style="--h:52px;transition-delay:210ms"></i><i style="--h:46px;transition-delay:280ms"></i><i style="--h:60px;transition-delay:350ms"></i><i style="--h:38px;transition-delay:420ms"></i></div></div></div></div></main></div></div></div><h3>Overview</h3><p>See every load, its status and what needs attention, at a glance.</p></div><div class="slide"><div class="frame"><div class="dwrap obs" data-crop="1"><div class="dash "><aside class="ds"><div class="dlogo"><i></i>Loadlane</div><a class="">Overview</a><a class="on">Loads</a><a class="">Documents</a><a class="">Carriers</a><a class="">Alerts</a><a class="">Integrations</a><div class="dws">Houston plant<br><small>Team plan</small></div></aside><main class="dm"><div class="dt"><div><div class="dcrumb">Loads / LL-48213</div><h4>Houston plant to Chicago DC</h4></div><div class="dchips"><span class="dchip ok">On the road</span><span class="dchip ">Lone Star Freight</span></div></div><div class="d3"><div class="dc"><h5>Timeline</h5><ol class="dtl"><li class="done">Gate check-in<small>6:42 AM</small></li><li class="done">Loading<small>7:05 AM</small></li><li class="done">Weighing<small>7:48 AM</small></li><li class="done">Departure<small>8:02 AM</small></li><li class="done">On the road<small>Now</small></li><li class="">Delivered<small>ETA 9:30 AM</small></li></ol></div><div class="dc dmap"><h5>Live position</h5><svg viewBox="0 0 300 150"><g stroke="currentColor" opacity=".08"><line x1="30" y1="0" x2="30" y2="150"/><line x1="60" y1="0" x2="60" y2="150"/><line x1="90" y1="0" x2="90" y2="150"/><line x1="120" y1="0" x2="120" y2="150"/><line x1="150" y1="0" x2="150" y2="150"/><line x1="180" y1="0" x2="180" y2="150"/><line x1="210" y1="0" x2="210" y2="150"/><line x1="240" y1="0" x2="240" y2="150"/><line x1="270" y1="0" x2="270" y2="150"/><line x1="0" y1="25" x2="300" y2="25"/><line x1="0" y1="50" x2="300" y2="50"/><line x1="0" y1="75" x2="300" y2="75"/><line x1="0" y1="100" x2="300" y2="100"/><line x1="0" y1="125" x2="300" y2="125"/></g><path id="rt" d="M18 125 C80 118 110 40 170 56 S255 30 282 24" fill="none" stroke="currentColor" opacity=".25" stroke-width="3" stroke-dasharray="3 5"/><path d="M18 125 C80 118 110 40 170 56" fill="none" stroke="var(--lime)" stroke-width="3.5" stroke-linecap="round"/><circle cx="18" cy="125" r="5" fill="currentColor"/><circle cx="282" cy="24" r="6" fill="none" stroke="var(--pos)" stroke-width="2.5"/><g><circle r="7" fill="var(--lime)"/><circle r="3" fill="#10130A"/><animateMotion dur="9s" repeatCount="indefinite" path="M18 125 C80 118 110 40 170 56 S255 30 282 24"/></g></svg><div class="deta"><b>ETA 9:30 AM</b><span>31 mi left · on schedule</span></div></div><div class="dc"><h5>Documents <span class="dnum">4</span></h5><ul class="ddocs"><li><span>Check-in receipt</span><span class="dchip ">Driver link</span></li><li><span>Loading note</span><span class="dchip ">Email bot</span></li><li><span>Weighing ticket</span><span class="dchip ">Scale API</span></li><li><span>Bill of lading</span><span class="dchip ">Script upload</span></li></ul><span class="dbtn dgh">Attach document</span></div></div><div class="dc"><h5>Activity</h5><ul class="dact"><li><time>8:41 AM</time><span>GPS update: 31 mi from Chicago DC</span></li><li><time>8:02 AM</time><span>Departure confirmed by gate staff</span></li><li><time>7:48 AM</time><span>Weighing ticket attached via Scale API</span></li></ul></div></main></div></div></div><h3>Load detail</h3><p>One timeline, live position and every document for a single load.</p></div><div class="slide"><div class="frame"><div class="dwrap obs" data-crop="1"><div class="dash light"><aside class="ds"><div class="dlogo"><i></i>Loadlane</div><a class="">Overview</a><a class="">Loads</a><a class="on">Documents</a><a class="">Carriers</a><a class="">Alerts</a><a class="">Integrations</a><div class="dws">Houston plant<br><small>Team plan</small></div></aside><main class="dm"><div class="dt"><div><h4>Documents</h4><div class="dsub">Everything that arrived today, matched to its load</div></div><span class="dbtn">Add manually</span></div><div class="dk"><div class="dc"><div class="l">Attached today</div><div class="v">138</div><div class="s">sample data</div></div><div class="dc"><div class="l">Auto-matched</div><div class="v">97%</div><div class="s">to the right load</div></div><div class="dc"><div class="l">Needs review</div><div class="v">4</div><div class="s">open</div></div><div class="dc"><div class="l">Sources</div><div class="v">4</div><div class="s">connected</div></div></div><div class="d2"><div class="dc"><h5>Inbox</h5><div class="dr dd"><b>weighing_ticket_0211.pdf</b><span>LL-48213</span><span class="dchip ">Scale API</span><span class="dchip ok">Matched</span></div><div class="dr dd"><b>BOL_Houston_Dallas.pdf</b><span>LL-48215</span><span class="dchip ">Email bot</span><span class="dchip ok">Matched</span></div><div class="dr dd"><b>delivery_photo_memphis.jpg</b><span>LL-48216</span><span class="dchip ">Driver link</span><span class="dchip ok">Matched</span></div><div class="dr dd"><b>customs_papers.pdf</b><span>LL-48214</span><span class="dchip ">Script upload</span><span class="dchip ok">Matched</span></div><div class="dr dd"><b>scan_0098.pdf</b><span>Unknown load</span><span class="dchip ">Email bot</span><span class="dchip late">Needs review</span></div><div class="dr dd"><b>invoice_lonestar_1182.pdf</b><span>LL-48213</span><span class="dchip ">API</span><span class="dchip ok">Matched</span></div></div><div class="dc"><h5>Where they came from</h5><div class="dsrc"><span>Email-in</span><b>52</b></div><div class="dsrc"><span>API</span><b>41</b></div><div class="dsrc"><span>Scripts</span><b>27</b></div><div class="dsrc"><span>Driver links</span><b>18</b></div></div></div></main></div></div></div><h3>Documents inbox</h3><p>Documents from email, API, scripts and drivers land on the right load.</p></div><div class="slide"><div class="frame"><div class="dwrap obs" data-crop="1"><div class="dash dphonebg "><div class="dphone"><div class="dpl">app.loadlane.example/d/rk29xq</div><h4>LL-48215</h4><div class="dsub">Houston plant to Dallas DC</div><div class="dnow"><small>Now</small><b>Gate check-in</b></div><span class="dseg"><i class="on"></i><i class=""></i><i class=""></i><i class=""></i><i class=""></i><i class=""></i></span><div class="dbig">Confirm: Loading</div><div class="dbig dghost">Share my location</div></div><span class="dfloat f1">Gate check-in confirmed</span><span class="dfloat f2">Location shared</span><span class="dfloat f3">No app to install</span></div></div></div><h3>Driver link</h3><p>Drivers confirm steps from their phone. No app to install.</p></div></div>
+ <div class="carbar"><button class="arrow" id="prev" aria-label="Previous screen">&#8592;</button><button class="arrow" id="next" aria-label="Next screen">&#8594;</button><div class="dots" id="dots"><i class="on"></i><i></i><i></i><i></i></div><span class="note">Planned dashboard, sample data</span></div></div>
+</div></section>
+
+<section id="features"><div class="wrap">
+ <div class="head rvl"><span class="badge">Features</span><h2>All-in-one load operations</h2><p>From the first update to the final document, in one platform. No glue code, no extra tools.</p></div>
+ <div class="fg"><div class="card rvl "><div class="fv"><svg viewBox="0 0 360 190" role="img" aria-label="Four sources feeding one load">
+<path class="flow" d="M100 24C180 24 200 95 266 95"/><path class="flow" d="M100 70C170 70 200 95 266 95"/><path class="flow" d="M100 116C170 116 200 95 266 95"/><path class="flow" d="M100 162C180 162 200 95 266 95"/>
+<rect class="src" x="2" y="6" width="98" height="36" rx="9"/><text class="lbl" x="14" y="29">Driver link</text>
+<rect class="src" x="2" y="52" width="98" height="36" rx="9"/><text class="lbl" x="14" y="75">Gate staff</text>
+<rect class="src" x="2" y="98" width="98" height="36" rx="9"/><text class="lbl" x="14" y="121">Dispatch</text>
+<rect class="src" x="2" y="144" width="98" height="36" rx="9"/><text class="lbl" x="14" y="167">GPS</text>
+<circle class="pulse" cx="296" cy="95" r="28"/><circle class="core" cx="296" cy="95" r="28"/><text x="296" y="100" text-anchor="middle" fill="#10130A" style="font:700 13px Inter,sans-serif">Load</text></svg></div><h3>Live status from four sources</h3><p>Drivers tap a phone link. Gate staff and loading points confirm steps. Dispatch adds notes. GPS fills the gaps.</p></div><div class="card rvl "><div class="fv"><div class="tl" id="ftl"><div class="tl-line"><i></i></div><ol><li>Gate</li><li>Load</li><li>Weigh</li><li>Depart</li><li>Deliver</li></ol></div></div><h3>One timeline, dock to delivery</h3><p>Check-in, loading, weighing, departure, delivery. Each step shows what happens next and when.</p></div><div class="card rvl "><div class="fv"><div class="stack"><div><u>&#10003;</u><b>Weighing ticket</b><i>Scale API</i></div><div><u>&#10003;</u><b>Bill of lading</b><i>Script upload</i></div><div><u>&#10003;</u><b>Proof of delivery</b><i>Email bot</i></div></div></div><h3>Documents attach themselves</h3><p>Forward an email, call the API, or run a script. Tickets, bills of lading, and delivery proofs land on the right load.</p></div><div class="card rvl "><div class="fv"><div class="alert"><div class="pills"><span class="p ok">On schedule</span><span class="p late">25 min late</span></div><div class="eta">Load LL-48213, arrival <b>Chicago 9:30 AM</b></div><div class="toast">Running late. Customer notified, new arrival 9:55 AM.</div></div></div><h3>Alerts before the customer calls</h3><p>When a truck falls behind its window, you and your customer get a message with the new arrival time.</p></div><div class="card rvl wide"><div class="fv"><div class="carr" style="max-width:520px;margin:0 auto"><div><span>Lone Star Freight <em>96% on time</em></span><s style="--w:96%"></s></div><div><span>Great Lakes Haul <em>91% on time</em></span><s style="--w:91%"></s></div><div><span>Prairie Express <em>84% on time</em></span><s style="--w:84%"></s></div></div></div><h3>Carrier scorecards and records</h3><p>Every carrier’s on-time rate, contacts, and past loads in one place, so the next booking starts with facts.</p></div></div>
+</div></section>
+
+<section><div class="wrap">
+ <div class="head rvl"><span class="badge">Process</span><h2>How it works</h2><p>Three steps from scattered updates to one clear view.</p></div>
+ <div class="dial rvl"><svg viewBox="0 0 300 300" aria-hidden="true"><defs><radialGradient id="gl"><stop offset="0" stop-color="#8FA21E" stop-opacity=".55"/><stop offset=".6" stop-color="#4C5A12" stop-opacity=".25"/><stop offset="1" stop-color="#0A0A0B" stop-opacity="0"/></radialGradient></defs><circle cx="150" cy="150" r="148" fill="url(#gl)"/><g class="ticks" id="tk"></g><circle id="arc" cx="150" cy="150" r="140" fill="none" stroke="#D2F23C" stroke-width="4" stroke-linecap="round" stroke-dasharray="880" stroke-dashoffset="880" transform="rotate(-90 150 150)"/></svg>
+ <div class="dialc"><svg viewBox="0 0 24 24" id="dI"></svg><h3 id="dT"></h3><p id="dD"></p></div></div>
+ <div class="ddots" role="group" aria-label="Step"><button aria-pressed="true" aria-label="Step 1"></button><button aria-pressed="false" aria-label="Step 2"></button><button aria-pressed="false" aria-label="Step 3"></button></div>
+</div></section>
+
+<section><div class="wrap">
+ <div class="head rvl"><span class="badge">Built in</span><h2>What is in the product</h2><p>Designed for the way logistics teams really work.</p></div>
+ <div class="stats">
+  <div class="card stat rvl" data-count><div class="num" data-n="6">0</div><h3>Steps tracked</h3><p>From gate check-in to delivery.</p></div>
+  <div class="card stat rvl" data-count style="transition-delay:80ms"><div class="num" data-n="4">0</div><h3>Status sources</h3><p>Drivers, gate, dispatch and GPS.</p></div>
+  <div class="card stat rvl" data-count style="transition-delay:160ms"><div class="num" data-n="3">0</div><h3>Ways to attach documents</h3><p>Email, API or script.</p></div>
+  <div class="card stat rvl" data-count style="transition-delay:240ms"><div class="num" data-n="0">0</div><h3>Apps for drivers</h3><p>A link on their phone is enough.</p></div>
+ </div>
+</div></section>
+
+<section><div class="wrap">
+ <div class="head rvl"><span class="badge">Integrations</span><h2>Connects to the tools you already use.</h2><p>Start with the open API, email and CSV. Add connectors as you grow.</p></div>
+ <div class="tiles"><div class="tile rvl" style="transition-delay:0ms"><b>REST API</b><span class="l">Launch</span></div><div class="tile rvl" style="transition-delay:70ms"><b>Webhooks</b><span class="l">Launch</span></div><div class="tile rvl" style="transition-delay:140ms"><b>Email-in</b><span class="l">Launch</span></div><div class="tile rvl" style="transition-delay:210ms"><b>CSV import</b><span class="l">Launch</span></div><div class="tile rvl" style="transition-delay:0ms"><b>Salesforce</b><span class="">Next</span></div><div class="tile rvl" style="transition-delay:70ms"><b>Zapier</b><span class="">Next</span></div><div class="tile rvl" style="transition-delay:140ms"><b>Make</b><span class="">Next</span></div><div class="tile rvl" style="transition-delay:210ms"><b>EDI X12</b><span class="">Next</span></div><div class="tile rvl" style="transition-delay:0ms"><b>SAP</b><span class="">On request</span></div><div class="tile rvl" style="transition-delay:70ms"><b>NetSuite</b><span class="">On request</span></div><div class="tile rvl" style="transition-delay:140ms"><b>Samsara</b><span class="">On request</span></div><div class="tile rvl" style="transition-delay:210ms"><b>Slack</b><span class="">Next</span></div></div>
+ <p style="text-align:center;color:var(--mu);font-size:14px;margin-top:22px">Planned integrations. Product names belong to their owners.</p>
+</div></section>
+
+<section id="pricing"><div class="wrap" style="text-align:center">
+ <div class="head rvl"><span class="badge">Pricing</span><h2>Simple pricing</h2><p>Pick a plan by how many loads you move. Cancel anytime.</p></div>
+ <div class="tg" role="group" aria-label="Billing period"><button data-y="0" aria-pressed="true">Monthly</button><button data-y="1" aria-pressed="false">Yearly (-20%)</button></div>
+ <div class="plans"><div class="card plan rvl"><h3>Starter</h3><p class="d">For small teams tracking their first loads.</p><div class="price">$<span class="pr" data-m="49" data-y="39">49</span></div><div class="per" style="color:var(--mu);font-size:14px">/month</div><ul><li>Up to 50 loads / month</li><li>Driver status links</li><li>Customer tracking page</li><li>Email-in for documents</li></ul><a class="btn gr" href="#join"><span>Join the waitlist</span></a></div><div class="card plan rvl pop"><h3>Team</h3><p class="d">For teams who want full visibility and automation.</p><div class="price">$<span class="pr" data-m="149" data-y="119">149</span></div><div class="per" style="color:var(--mu);font-size:14px">/month</div><ul><li>Up to 300 loads / month</li><li>GPS tracking and late alerts</li><li>API and webhooks</li><li>Carrier and customer records</li><li>Up to 10 users</li></ul><a class="btn lm" href="#join"><span>Join the waitlist</span></a></div><div class="card plan rvl"><h3>Fleet</h3><p class="d">For larger operations with their own systems.</p><div class="price">$<span class="pr" data-m="399" data-y="319">399</span></div><div class="per" style="color:var(--mu);font-size:14px">/month</div><ul><li>Unlimited loads and users</li><li>TMS and ERP integrations</li><li>Custom bots and document sync</li><li>Priority support</li></ul><a class="btn gr" href="#join"><span>Join the waitlist</span></a></div></div>
+ <p style="color:var(--mu);font-size:14px;margin-top:22px">Planned launch pricing. Waitlist members get early access and a founding-customer discount.</p>
+</div></section>
+
+<section><div class="wrap">
+ <div class="head rvl"><span class="badge">FAQ</span><h2>Questions, answered.</h2></div>
+ <div class="faq rvl"><details><summary>Can Loadlane connect to SAP or Salesforce?</summary><p>Yes, that is the plan. At launch you can connect any system through the open API and webhooks, email-in, or CSV import. Salesforce, Zapier, and EDI status messages come next. SAP connections are set up with your IT team or an integration partner.</p></details><details><summary>Do drivers need to install an app?</summary><p>No. Drivers get a link on their phone and tap to report each step.</p></details><details><summary>How do documents get attached?</summary><p>Forward an email to the load’s address, upload through the API, or run a script. You can also add files by hand.</p></details><details><summary>What does the dashboard show?</summary><p>Every active load with its status and ETA, a timeline and live position per load, all documents, and alerts for anything that needs attention. The pictures on this page show the planned dashboard with sample data.</p></details><details><summary>When can I start?</summary><p>We are onboarding the first customers now. Join the waitlist and we’ll invite you.</p></details></div>
+</div></section>
+
+<section class="final" id="join"><div class="wrap rvl"><span class="badge">Early access</span><h2>Ready to stop chasing updates?</h2><p>Tell us where to send your invite. We are onboarding the first shippers and carriers in the US.</p>
+ <form class="wl" id="wl"><label for="em" style="position:absolute;left:-9999px">Work email</label><input id="em" type="email" required placeholder="you@company.com" autocomplete="email"><button class="btn lm" type="submit"><span>Join the waitlist</span></button></form><div id="msg" role="status"></div></div></section>
+</main>
+<div class="mark" aria-hidden="true">Loadlane</div>
+<footer><div class="wrap"><span>Loadlane © 2026</span><span>Early preview. Name, pricing and sample data are placeholders.</span></div></footer>
+<script>
+(function(){
+var rm=window.matchMedia&&matchMedia("(prefers-reduced-motion: reduce)").matches;
+function $(s,c){return (c||document).querySelector(s)}function $$(s,c){return [].slice.call((c||document).querySelectorAll(s))}
+function fit(){$$(".dwrap").forEach(function(w){var d=w.firstElementChild,sc=w.clientWidth/920,cr=parseFloat(w.getAttribute("data-crop")||"1");d.style.transform="scale("+sc+")";w.style.height=(540*sc*cr)+"px"})}
+window.addEventListener("resize",fit);fit();if(document.fonts&&document.fonts.ready)document.fonts.ready.then(fit);
+function count(card){var n=$(".num",card),t=+n.getAttribute("data-n");if(rm||t===0){n.textContent=t;return}var t0=null;function f(ts){if(t0===null)t0=ts;var p=Math.min((ts-t0)/1200,1);n.textContent=Math.round(t*(1-Math.pow(1-p,3)));if(p<1)requestAnimationFrame(f)}requestAnimationFrame(f)}
+var io=("IntersectionObserver" in window)?new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting){e.target.classList.add("in");if(e.target.hasAttribute("data-count"))count(e.target);io.unobserve(e.target)}})},{threshold:.18}):null;
+$$(".rvl,.obs,.att").forEach(function(e){if(io)io.observe(e);else{e.classList.add("in");if(e.hasAttribute("data-count"))count(e)}});
+$$(".att li").forEach(function(li,k){li.style.transitionDelay=(250+k*220)+"ms"});
+if(rm)$$("svg").forEach(function(s){if(s.pauseAnimations)s.pauseAnimations()});
+/* carousel */
+var track=$("#track"),dots=$$("#dots i");
+function step(){return track.clientWidth+20}
+track.addEventListener("scroll",function(){var k=Math.round(track.scrollLeft/step());dots.forEach(function(d,j){d.classList.toggle("on",j===k)})},{passive:true});
+$("#prev").addEventListener("click",function(){track.scrollBy({left:-step(),behavior:"smooth"})});
+$("#next").addEventListener("click",function(){track.scrollBy({left:step(),behavior:"smooth"})});
+/* feature timeline */
+var tl=$("#ftl"),lis=$$("li",tl),bar=$(".tl-line i",tl),st=0,n=lis.length;
+function paint(){var t=Math.min(st,n-1);bar.classList.toggle("nt",st===0);lis.forEach(function(l,k){l.classList.toggle("on",k<=t)});bar.style.width=(t/(n-1)*100)+"%"}
+if(rm){st=n-1;paint()}else{paint();setInterval(function(){if(!tl.closest(".card").classList.contains("in"))return;st=(st+1)%(n+1);paint()},1100)}
+/* process dial */
+var DS=[{t:"1. Connect your systems",d:"Forward emails, import loads, or link your ERP through the API. No hardware needed.",f:.34},{t:"2. Invite drivers and carriers",d:"Send a link. Drivers confirm steps on their phone, gate staff and dispatch add updates.",f:.67},{t:"3. Track every load",d:"One timeline per load, documents attached automatically, customers informed on time.",f:1}];
+var IC=['<ellipse cx="12" cy="6" rx="8" ry="3"/><path d="M4 6v6c0 1.7 3.6 3 8 3s8-1.3 8-3V6M4 12v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/>','<path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/>','<path d="M12 21s7-6.2 7-11.5A7 7 0 0 0 5 9.5C5 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/>'];
+var tk=$("#tk"),h="";for(var i=0;i<72;i++){var a=i/72*6.2832,l=i%9===0,r1=l?112:120,r2=126;h+='<line x1="'+(150+Math.cos(a)*r1).toFixed(1)+'" y1="'+(150+Math.sin(a)*r1).toFixed(1)+'" x2="'+(150+Math.cos(a)*r2).toFixed(1)+'" y2="'+(150+Math.sin(a)*r2).toFixed(1)+'" stroke="#fff" stroke-opacity="'+(l?.75:.18)+'" stroke-width="'+(l?1.6:1)+'"/>'}tk.innerHTML=h;
+var arc=$("#arc"),dT=$("#dT"),dD=$("#dD"),dI=$("#dI"),dbs=$$(".ddots button"),di=0;
+function dial(k){di=k;arc.style.strokeDashoffset=String(880*(1-DS[k].f));dT.textContent=DS[k].t;dD.textContent=DS[k].d;dI.innerHTML=IC[k];dbs.forEach(function(b,j){b.setAttribute("aria-pressed",j===k?"true":"false")})}
+dbs.forEach(function(b,j){b.addEventListener("click",function(){dial(j)})});
+dial(0);if(!rm)setInterval(function(){dial((di+1)%3)},4500);
+/* pricing */
+$$(".tg button").forEach(function(b){b.addEventListener("click",function(){var y=b.getAttribute("data-y")==="1";$$(".tg button").forEach(function(x){x.setAttribute("aria-pressed",x===b?"true":"false")});$$(".pr").forEach(function(p){p.classList.remove("flip");void p.offsetWidth;p.textContent=y?p.getAttribute("data-y"):p.getAttribute("data-m");p.classList.add("flip")});$$(".per").forEach(function(p){p.textContent=y?"/month, billed yearly":"/month"})})});
+/* waitlist */
+$("#wl").addEventListener("submit",function(e){e.preventDefault();var v=$("#em").value.trim();try{var l=JSON.parse(localStorage.getItem("ll_waitlist")||"[]");l.push(v);localStorage.setItem("ll_waitlist",JSON.stringify(l))}catch(x){}$("#msg").textContent="You’re on the list. We’ll email you when early access opens.";$("#wl").reset()});
+})();
+</script>
+</body></html>
+</body></html>

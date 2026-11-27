@@ -6,3 +6,5 @@ coverage/
 **/migrations/meta/
 # Kept verbatim as provided by the product owner
 docs/masterprompt.md
+# Reference snapshots of the prototype and landing page (kept as published)
+docs/reference/prototype/*.html
