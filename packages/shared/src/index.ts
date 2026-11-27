@@ -21,6 +21,12 @@ export {
   type TransportStatus,
 } from "./transport-status.ts";
 export {
+  CONSENT_COPY,
+  CONSENT_TEXT_VERSION,
+  DRIVER_REPORTABLE_STATUSES,
+  DRIVER_STATUS_LABELS,
+} from "./driver-consent.ts";
+export {
   FRESHNESS_LABELS,
   LOW_QUALITY_ACCURACY_M,
   MAX_CLOCK_SKEW_MS,
