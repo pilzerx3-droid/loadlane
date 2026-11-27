@@ -317,7 +317,7 @@ describe("Dashboard", () => {
 
   it("is honest about what it does not know yet: no late or position counts", () => {
     const markup = html(<Dashboard summary={summary} canManage />);
-    expect(markup).toContain("do not estimate");
+    expect(markup).toContain("does not estimate");
     expect(markup).not.toContain("Late transports</p>");
   });
 
