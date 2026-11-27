@@ -1,0 +1,76 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Lint, typecheck, migrations, tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    services:
+      postgres:
+        image: postgis/postgis:18-3.7
+        env:
+          POSTGRES_USER: loadlane
+          POSTGRES_PASSWORD: loadlane_dev_only
+          POSTGRES_DB: loadlane
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U loadlane -d loadlane"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+      valkey:
+        image: valkey/valkey:9.2-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "valkey-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+
+    # Local-only throwaway values for the service containers above; no real secrets.
+    env:
+      DATABASE_URL: postgres://loadlane:loadlane_dev_only@127.0.0.1:5432/loadlane
+      APP_DATABASE_URL: postgres://loadlane_app:loadlane_app_dev_only@127.0.0.1:5432/loadlane
+      REDIS_URL: redis://127.0.0.1:6379
+      NEXT_TELEMETRY_DISABLED: "1"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      # Same role as infra/postgres/init/01-app-role.sh: it must not own tables or bypass row-level security.
+      - name: Create the application database role
+        run: >-
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -c
+          "CREATE ROLE loadlane_app LOGIN PASSWORD 'loadlane_app_dev_only' NOSUPERUSER NOBYPASSRLS NOCREATEDB NOCREATEROLE NOINHERIT"
+
+      - run: pnpm db:migrate
+      - run: pnpm db:check
+
+      - run: pnpm lint
+      - run: pnpm format:check
+      - run: pnpm typecheck
+      - run: pnpm test
