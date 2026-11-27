@@ -1,4 +1,11 @@
 {
   "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "types": ["node"],
+    // NestJS uses legacy decorators. Constructor parameters are injected with explicit @Inject(token)
+    // instead of emitDecoratorMetadata, because Node's type stripping, esbuild and vitest's
+    // transformer do not emit decorator metadata.
+    "experimentalDecorators": true
+  },
   "include": ["src/**/*.ts"]
 }
