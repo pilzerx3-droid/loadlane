@@ -1,10 +1,22 @@
-import { Body, Controller, Get, Headers, HttpCode, Inject, Post } from "@nestjs/common";
+import {
+  Body,
+  Controller,
+  Get,
+  Headers,
+  HttpCode,
+  Inject,
+  Post,
+  UploadedFile,
+  UseInterceptors,
+} from "@nestjs/common";
+import { FileInterceptor } from "@nestjs/platform-express";
 import { ApiHeader } from "@nestjs/swagger";
 import { CONSENT_TEXT_VERSION, DRIVER_REPORTABLE_STATUSES } from "@loadlane/shared";
 import { z } from "zod";
 import { Public } from "../../platform/access.ts";
 import { ApiRoute } from "../../platform/openapi.ts";
 import { ZodPipe } from "../../platform/validation.ts";
+import { DOCUMENT_SERVICE, MAX_DOCUMENT_BYTES, type DocumentService } from "../documents/index.ts";
 import type { DriverAccessService, DriverJob } from "./driver-access-service.ts";
 import { DRIVER_ACCESS_SERVICE } from "./tokens.ts";
 
@@ -68,7 +80,10 @@ const tokenHeader = ApiHeader({
  */
 @Controller("v1/driver")
 export class DriverController {
-  constructor(@Inject(DRIVER_ACCESS_SERVICE) private readonly service: DriverAccessService) {}
+  constructor(
+    @Inject(DRIVER_ACCESS_SERVICE) private readonly service: DriverAccessService,
+    @Inject(DOCUMENT_SERVICE) private readonly documents: DocumentService,
+  ) {}
 
   @Get("job")
   @Public()
@@ -119,6 +134,35 @@ export class DriverController {
     @Body(new ZodPipe(statusBodySchema)) body: z.infer<typeof statusBodySchema>,
   ): Promise<DriverJob> {
     return this.service.reportStatus(token, body.status, body.note ?? null);
+  }
+
+  @Post("documents")
+  @HttpCode(201)
+  @Public()
+  @tokenHeader
+  @UseInterceptors(
+    FileInterceptor("file", { limits: { fileSize: MAX_DOCUMENT_BYTES, files: 1, fields: 5 } }),
+  )
+  @ApiRoute({
+    summary:
+      "Upload a photo or document for the transport (multipart form with `file` and `type`). PDF, JPEG, PNG, WebP or HEIC, up to 10 MB.",
+    response: z.object({ id: z.uuid(), filename: z.string() }),
+    status: 201,
+  })
+  async upload(
+    @Headers(TOKEN_HEADER) token: unknown,
+    @UploadedFile() file: { originalname: string; buffer: Buffer } | undefined,
+    @Body() body: { type?: unknown },
+  ): Promise<{ id: string; filename: string }> {
+    const grant = await this.service.resolve(token);
+    const type = typeof body.type === "string" ? body.type : "";
+    const stored = await this.documents.uploadFromDriver(
+      { organizationId: grant.organizationId, driverLinkId: grant.linkId },
+      grant.transportId,
+      file,
+      type,
+    );
+    return { id: stored.id, filename: stored.filename };
   }
 
   @Post("position")

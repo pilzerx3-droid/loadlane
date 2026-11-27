@@ -54,7 +54,8 @@ export function DocumentsCard({
                 </a>
                 <p className="text-muted-foreground">
                   {documentTypeLabel(document.type)} · {formatBytes(document.sizeBytes)} ·{" "}
-                  {format.format(new Date(document.createdAt))} · {document.uploadedBy.displayName}
+                  {format.format(new Date(document.createdAt))} ·{" "}
+                  {document.uploadedBy?.displayName ?? "Driver (via link)"}
                 </p>
               </div>
               {canManage ? (

@@ -1,12 +1,13 @@
 // End-to-end tests of what a driver can do through a Driver Link: token handling, the consent gate
 // for positions, status reports, stale and future readings, closed transports and isolation.
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { MemoryObjectStorage } from "../platform/object-storage.ts";
 import { startTestApi, type TestApi } from "../testing/harness.ts";
 
 let api: TestApi;
 
 beforeAll(async () => {
-  api = await startTestApi();
+  api = await startTestApi({ storage: new MemoryObjectStorage() }); // MOCK storage for tests
 });
 
 afterAll(async () => {
@@ -264,6 +265,50 @@ describe("Driver Link access", () => {
     expect((await body(response))["code"]).toBe("tracking_closed");
     const job = await body(await driver(s.token, "job"));
     expect(job).toMatchObject({ sharing: false, nextStatuses: [] });
+  });
+
+  it("lets the driver upload a photo that dispatchers then see, checked by content", async () => {
+    const s = await scenario();
+    const png = Buffer.concat([
+      Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+      Buffer.from("proof of delivery photo"),
+    ]);
+    const send = (bytes: Buffer, name: string, type = "proof_of_delivery", token = s.token) => {
+      const form = new FormData();
+      form.set("type", type);
+      form.set("file", new Blob([new Uint8Array(bytes)]), name);
+      return fetch(`${api.baseUrl}/v1/driver/documents`, {
+        method: "POST",
+        headers: { "x-driver-token": token },
+        body: form,
+      });
+    };
+
+    const ok = await send(png, "pod.png");
+    expect(ok.status).toBe(201);
+    expect((await send(Buffer.from("just text"), "note.txt")).status).toBe(400);
+    expect((await send(png, "x.png", "invoice")).status).toBe(400);
+    expect((await send(png, "x.png", "photo", "x".repeat(60))).status).toBe(404);
+
+    const listed = await body(await api.call(`/v1/transports/${s.transportId}/documents`, s.as));
+    const items = listed["items"] as Json[];
+    expect(items).toHaveLength(1);
+    expect(items[0]).toMatchObject({
+      filename: "pod.png",
+      contentType: "image/png",
+      uploadedBy: null,
+      uploadedByDriver: true,
+    });
+    const stored = await api.ownerRows(
+      "SELECT uploaded_by_user_id, uploaded_by_driver_link_id FROM document WHERE transport_id = $1",
+      [s.transportId],
+    );
+    expect(stored).toEqual([{ uploaded_by_user_id: null, uploaded_by_driver_link_id: s.linkId }]);
+    const audit = await body(await api.call("/v1/audit?entityType=document", s.as));
+    expect((audit["items"] as Json[]).map((item) => item["action"])).toEqual(["document.uploaded"]);
+
+    await api.call(`/v1/driver-links/${s.linkId}/revoke`, { ...s.as, method: "POST" });
+    expect((await send(png, "again.png")).status).toBe(410);
   });
 
   it("answers 410 for revoked and expired links", async () => {

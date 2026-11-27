@@ -343,6 +343,7 @@ describe("OpenAPI document", () => {
       "DriverController.job",
       "DriverController.position",
       "DriverController.status",
+      "DriverController.upload",
       "DriverController.withdraw",
       "DriverLinkController.create",
       "DriverLinkController.list",

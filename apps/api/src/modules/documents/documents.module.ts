@@ -16,5 +16,7 @@ import { DOCUMENT_SERVICE } from "./tokens.ts";
       useFactory: (pool: pg.Pool, storage: ObjectStorage) => new DocumentService(pool, storage),
     },
   ],
+  // The driver-link module uploads files for drivers through the same service (and the same checks).
+  exports: [DOCUMENT_SERVICE],
 })
 export class DocumentsModule {}

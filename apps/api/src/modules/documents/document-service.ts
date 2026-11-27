@@ -23,6 +23,11 @@ export interface DocumentContext {
   requestId?: string | undefined;
 }
 
+/** A driver acting through a Driver Link (ADR 0015): the organization comes from the link. */
+export interface DriverUploadContext {
+  organizationId: string;
+  driverLinkId: string;
+}
 export interface DocumentSummary {
   id: string;
   transportId: string;
@@ -30,7 +35,9 @@ export interface DocumentSummary {
   filename: string;
   contentType: string;
   sizeBytes: number;
-  uploadedBy: { id: string; displayName: string };
+  /** Null when the file came from a driver through a Driver Link. */
+  uploadedBy: { id: string; displayName: string } | null;
+  uploadedByDriver: boolean;
   createdAt: string;
 }
 
@@ -44,15 +51,20 @@ function summaryOf(row: Row): DocumentSummary {
     filename: row["filename"] as string,
     contentType: row["content_type"] as string,
     sizeBytes: Number(row["size_bytes"]),
-    uploadedBy: {
-      id: row["uploaded_by_user_id"] as string,
-      displayName: row["display_name"] as string,
-    },
+    uploadedBy:
+      row["uploaded_by_user_id"] === null
+        ? null
+        : {
+            id: row["uploaded_by_user_id"] as string,
+            displayName: row["display_name"] as string,
+          },
+    uploadedByDriver: row["uploaded_by_user_id"] === null,
     createdAt: (row["created_at"] as Date).toISOString(),
   };
 }
 
 const COLUMNS = `d.id, d.transport_id, d.type, d.filename, d.content_type, d.size_bytes, d.uploaded_by_user_id, u.display_name, d.created_at`;
+const FROM_DOCUMENT = "document d LEFT JOIN app_user u ON u.id = d.uploaded_by_user_id";
 
 /**
  * Files attached to a transport. Metadata lives in the database under row-level security, the bytes
@@ -70,7 +82,7 @@ export class DocumentService {
       const transport = await client.query("SELECT 1 FROM transport WHERE id = $1", [transportId]);
       if (transport.rowCount === 0) throw new NotFoundException();
       const rows = await client.query<Row>(
-        `SELECT ${COLUMNS} FROM document d JOIN app_user u ON u.id = d.uploaded_by_user_id
+        `SELECT ${COLUMNS} FROM ${FROM_DOCUMENT}
          WHERE d.transport_id = $1 AND d.deleted_at IS NULL ORDER BY d.created_at DESC, d.id DESC`,
         [transportId],
       );
@@ -84,6 +96,27 @@ export class DocumentService {
     file: { originalname: string; buffer: Buffer } | undefined,
     type: string,
   ): Promise<DocumentSummary> {
+    return this.store({ kind: "user", context }, transportId, file, type);
+  }
+
+  /** A driver's upload through a Driver Link. The caller resolved the link; the transport is the link's own. */
+  async uploadFromDriver(
+    context: DriverUploadContext,
+    transportId: string,
+    file: { originalname: string; buffer: Buffer } | undefined,
+    type: string,
+  ): Promise<DocumentSummary> {
+    return this.store({ kind: "driver", context }, transportId, file, type);
+  }
+
+  private async store(
+    actor:
+      { kind: "user"; context: DocumentContext } | { kind: "driver"; context: DriverUploadContext },
+    transportId: string,
+    file: { originalname: string; buffer: Buffer } | undefined,
+    type: string,
+  ): Promise<DocumentSummary> {
+    const { organizationId } = actor.context;
     if (!file || file.buffer.length === 0) {
       throw new ValidationFailedError([
         { path: "file", message: "choose a file to upload", code: "required" },
@@ -110,35 +143,50 @@ export class DocumentService {
     }
 
     const id = randomUUID();
-    const storageKey = `org/${context.organizationId}/transport/${transportId}/${id}`;
-    return withTenant(this.pool, this.tenant(context), async ({ client }) => {
+    const storageKey = `org/${organizationId}/transport/${transportId}/${id}`;
+    const tenant = actor.kind === "user" ? this.tenant(actor.context) : { organizationId };
+    return withTenant(this.pool, tenant, async ({ client }) => {
       const transport = await client.query("SELECT 1 FROM transport WHERE id = $1", [transportId]);
       if (transport.rowCount === 0) throw new NotFoundException();
       await client.query(
-        `INSERT INTO document (id, organization_id, transport_id, type, filename, content_type, size_bytes, storage_key, uploaded_by_user_id)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+        `INSERT INTO document (id, organization_id, transport_id, type, filename, content_type, size_bytes, storage_key, uploaded_by_user_id, uploaded_by_driver_link_id)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
         [
           id,
-          context.organizationId,
+          organizationId,
           transportId,
           type,
           safeFilename(file.originalname),
           detected.contentType,
           file.buffer.length,
           storageKey,
-          context.userId,
+          actor.kind === "user" ? actor.context.userId : null,
+          actor.kind === "driver" ? actor.context.driverLinkId : null,
         ],
       );
       // The file is stored before the transaction commits: if storing fails, no row is left behind.
       await this.storage.put(storageKey, file.buffer, detected.contentType);
-      await this.audit(client, context, "document.uploaded", id, {
+      const changes = {
         transportId,
         type,
         sizeBytes: file.buffer.length,
         contentType: detected.contentType,
-      });
+      };
+      if (actor.kind === "user") {
+        await this.audit(client, actor.context, "document.uploaded", id, changes);
+      } else {
+        await client.query(
+          `INSERT INTO audit_log (organization_id, actor_type, action, entity_type, entity_id, changes)
+           VALUES ($1, 'system', 'document.uploaded', 'document', $2, $3)`,
+          [
+            organizationId,
+            id,
+            JSON.stringify({ ...changes, driverLinkId: actor.context.driverLinkId }),
+          ],
+        );
+      }
       const row = await client.query<Row>(
-        `SELECT ${COLUMNS} FROM document d JOIN app_user u ON u.id = d.uploaded_by_user_id WHERE d.id = $1`,
+        `SELECT ${COLUMNS} FROM ${FROM_DOCUMENT} WHERE d.id = $1`,
         [id],
       );
       return summaryOf(row.rows[0] ?? {});

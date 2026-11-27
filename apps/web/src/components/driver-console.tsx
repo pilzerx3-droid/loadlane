@@ -16,6 +16,7 @@ import {
 } from "../app/driver-actions";
 import { DRIVER_FAILURE_MESSAGES, type DriverJobView as Job } from "../lib/driver-api";
 import { DriverJobView } from "./driver-job-view";
+import { DriverUpload } from "./driver-upload";
 import { Notice } from "./notices";
 
 /** A position is sent at most this often, however often the phone reports one. */
@@ -168,6 +169,8 @@ export function DriverConsole({ token, initial }: { token: string; initial: Job 
       ) : (
         <Notice>This transport is finished. Thank you.</Notice>
       )}
+
+      <DriverUpload token={token} />
 
       {job.nextStatuses.length > 0 ? (
         <Card className="space-y-3 p-4" aria-label="Report a status">

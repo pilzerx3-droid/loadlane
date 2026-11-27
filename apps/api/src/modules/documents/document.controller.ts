@@ -36,7 +36,11 @@ const summarySchema = z.object({
   filename: z.string(),
   contentType: z.string(),
   sizeBytes: z.number().int(),
-  uploadedBy: z.object({ id: z.uuid(), displayName: z.string() }),
+  uploadedBy: z
+    .object({ id: z.uuid(), displayName: z.string() })
+    .nullable()
+    .describe("Null when a driver uploaded the file through a Driver Link"),
+  uploadedByDriver: z.boolean(),
   createdAt: z.iso.datetime(),
 });
 

@@ -13,6 +13,7 @@ import {
 } from "drizzle-orm/pg-core";
 import { appUser } from "./app-user.ts";
 import { createdAtColumn, idColumn } from "./columns.ts";
+import { driverLink } from "./driver-link.ts";
 import { organization } from "./organization.ts";
 import { transport } from "./transport.ts";
 
@@ -42,9 +43,10 @@ export const document = pgTable(
     contentType: text("content_type").notNull(),
     sizeBytes: bigint("size_bytes", { mode: "number" }).notNull(),
     storageKey: text("storage_key").notNull(),
-    uploadedByUserId: uuid("uploaded_by_user_id")
-      .notNull()
-      .references(() => appUser.id),
+    /** Set for staff uploads. Exactly one of the two uploader columns is set. */
+    uploadedByUserId: uuid("uploaded_by_user_id").references(() => appUser.id),
+    /** Set for uploads made through a Driver Link (ADR 0015). */
+    uploadedByDriverLinkId: uuid("uploaded_by_driver_link_id"),
     createdAt: createdAtColumn(),
     deletedAt: timestamp("deleted_at", { withTimezone: true, mode: "date" }),
     deletedByUserId: uuid("deleted_by_user_id").references(() => appUser.id),
@@ -57,6 +59,15 @@ export const document = pgTable(
       columns: [t.transportId, t.organizationId],
       foreignColumns: [transport.id, transport.organizationId],
     }),
+    foreignKey({
+      name: "document_driver_link_org_fk",
+      columns: [t.uploadedByDriverLinkId, t.organizationId],
+      foreignColumns: [driverLink.id, driverLink.organizationId],
+    }),
+    check(
+      "document_one_uploader",
+      sql`(${t.uploadedByUserId} IS NULL) <> (${t.uploadedByDriverLinkId} IS NULL)`,
+    ),
     foreignKey({
       name: "document_organization_fk",
       columns: [t.organizationId],

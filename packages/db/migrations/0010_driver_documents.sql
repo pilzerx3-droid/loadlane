@@ -1,0 +1,4 @@
+ALTER TABLE "document" ALTER COLUMN "uploaded_by_user_id" DROP NOT NULL;--> statement-breakpoint
+ALTER TABLE "document" ADD COLUMN "uploaded_by_driver_link_id" uuid;--> statement-breakpoint
+ALTER TABLE "document" ADD CONSTRAINT "document_driver_link_org_fk" FOREIGN KEY ("uploaded_by_driver_link_id","organization_id") REFERENCES "public"."driver_link"("id","organization_id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "document" ADD CONSTRAINT "document_one_uploader" CHECK (("document"."uploaded_by_user_id" IS NULL) <> ("document"."uploaded_by_driver_link_id" IS NULL));
