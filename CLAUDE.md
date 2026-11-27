@@ -60,6 +60,8 @@ Permissions (ADR 0010): every API route declares `@Public()`, `@AuthenticatedOnl
 
 API structure (ADR 0011): code lives in `apps/api/src/modules/<name>/`, cross-cutting code in `apps/api/src/platform/`. A module imports another module only through its `index.ts`; the platform never imports a module (`architecture.test.ts` enforces this). Errors are RFC 9457 problem documents with a stable `code`; clients branch on `code`. Validate input with `ZodPipe(schema)` and document a route with `@ApiRoute({ summary, response, query })`, both from the same Zod schemas. Never log tokens, headers, query values or IP addresses. `pnpm install` must keep `@scarf/scarf` denied in `pnpm-workspace.yaml` (it sends install analytics).
 
+Web shell (ADR 0012): navigation lists only pages that exist and filters by permission (`apps/web/src/lib/navigation.ts`); the active organization is stored in the server session; people create their own organization at `/onboarding` (limit `MAX_ORGANIZATIONS_PER_USER`). UI components live in `packages/ui` with tokens from `docs/reference/prototype`. Fonts are self-hosted; never add a Google Fonts link.
+
 Notes: TypeScript is pinned to 6.0.x until typescript-eslint supports 7.x. Tests in `packages/db`, `apps/api` and `apps/web` need the local stack running. Local stack uses Valkey (BSD-3) instead of Redis and SeaweedFS (Apache-2.0) instead of MinIO for license reasons.
 
 ## Current phase
