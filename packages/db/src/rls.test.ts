@@ -1,7 +1,7 @@
 // Tenant isolation tests (ADR 0002, backlog P1-05). Needs the local PostgreSQL (pnpm infra:up).
 // Two organizations, A and B, are created through the application role. Every test then checks what
 // organization A can and cannot see or change, including deliberately wrong queries.
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import pg from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createTestDatabase, expectPgError, type TestDatabase } from "./testing/test-database.ts";
@@ -28,6 +28,8 @@ const TENANT_TABLES = [
   "stop",
   "transport_event",
   "document",
+  "driver_link",
+  "driver_consent",
 ] as const;
 
 /** Tables in schema public that deliberately have no row-level security. */
@@ -107,7 +109,19 @@ async function seedOrganization(
       "INSERT INTO document (organization_id, transport_id, type, filename, content_type, size_bytes, storage_key, uploaded_by_user_id) VALUES ($1, $2, 'photo', 'a.png', 'image/png', 10, $3, $4)",
       [organizationId, transportRow.rows[0]?.id, `test/${organizationId}/a.png`, adminUserId],
     );
+    const linkRow = await c.query<{ id: string }>(
+      "INSERT INTO driver_link (organization_id, transport_id, token_hash, expires_at, created_by_user_id) VALUES ($1, $2, $3, now() + interval '2 days', $4) RETURNING id",
+      [organizationId, transportRow.rows[0]?.id, tokenHash(organizationId), adminUserId],
+    );
+    await c.query(
+      "INSERT INTO driver_consent (organization_id, driver_link_id, text_version) VALUES ($1, $2, 1)",
+      [organizationId, linkRow.rows[0]?.id],
+    );
   });
+}
+
+function tokenHash(organizationId: string): string {
+  return createHash("sha256").update(`token-${organizationId}`).digest("hex");
 }
 
 beforeAll(async () => {
@@ -200,6 +214,16 @@ describe("tenant isolation", () => {
         "INSERT INTO document (organization_id, transport_id, type, filename, content_type, size_bytes, storage_key, uploaded_by_user_id) VALUES ($1, gen_random_uuid(), 'photo', 'x', 'image/png', 1, 'k', $2)",
         [orgB, userA],
       ],
+      [
+        "driver_link",
+        "INSERT INTO driver_link (organization_id, transport_id, token_hash, expires_at, created_by_user_id) VALUES ($1, gen_random_uuid(), repeat('a', 64), now(), $2)",
+        [orgB, userA],
+      ],
+      [
+        "driver_consent",
+        "INSERT INTO driver_consent (organization_id, driver_link_id, text_version) VALUES ($1, gen_random_uuid(), 1)",
+        [orgB],
+      ],
       ["transport_counter", "INSERT INTO transport_counter (organization_id) VALUES ($1)", [orgB]],
       ["carrier", "INSERT INTO carrier (organization_id, name) VALUES ($1, 'Forged')", [orgB]],
       [
@@ -239,8 +263,14 @@ describe("tenant isolation", () => {
         c.query("UPDATE stop SET notes = 'hacked' WHERE organization_id = $1", [orgB]),
         c.query("DELETE FROM stop WHERE organization_id = $1", [orgB]),
         c.query("UPDATE document SET filename = 'hacked' WHERE organization_id = $1", [orgB]),
+        c.query("UPDATE driver_link SET revoked_at = now() WHERE organization_id = $1", [orgB]),
+        c.query("UPDATE driver_consent SET withdrawn_at = now() WHERE organization_id = $1", [
+          orgB,
+        ]),
       ]);
-      expect(updates.map((result) => result.rowCount)).toEqual([0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
+      expect(updates.map((result) => result.rowCount)).toEqual([
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+      ]);
     });
 
     // Organization B is untouched.
@@ -251,6 +281,39 @@ describe("tenant isolation", () => {
     expect(await count({ organizationId: orgB }, "FROM membership_role")).toBe(1);
     expect(await count({ organizationId: orgB }, "FROM membership WHERE status = 'removed'")).toBe(
       0,
+    );
+  });
+
+  it("driver_link: a presented token reveals exactly its own link and nothing else", async () => {
+    const own = await run({ driverTokenHash: tokenHash(orgA) }, (c) =>
+      c.query<{ organization_id: string }>("SELECT organization_id FROM driver_link"),
+    );
+    expect(own.rows.map((row) => row.organization_id)).toEqual([orgA]);
+    // A token that matches nothing reveals nothing, and consent stays invisible without a tenant.
+    const unknown = "0".repeat(64);
+    expect(await count({ driverTokenHash: unknown }, "FROM driver_link")).toBe(0);
+    expect(await count({ driverTokenHash: tokenHash(orgA) }, "FROM driver_consent")).toBe(0);
+    // A token alone cannot change anything.
+    const revoke = await run({ driverTokenHash: tokenHash(orgA) }, (c) =>
+      c.query("UPDATE driver_link SET revoked_at = now()"),
+    );
+    expect(revoke.rowCount).toBe(0);
+  });
+
+  it("driver_link: only revocation can change, and links and consent cannot be deleted", async () => {
+    await expectPgError(
+      run({ organizationId: orgA }, (c) =>
+        c.query("UPDATE driver_link SET expires_at = now() + interval '1 year'"),
+      ),
+      "42501",
+    );
+    await expectPgError(
+      run({ organizationId: orgA }, (c) => c.query("DELETE FROM driver_link")),
+      "42501",
+    );
+    await expectPgError(
+      run({ organizationId: orgA }, (c) => c.query("DELETE FROM driver_consent")),
+      "42501",
     );
   });
 
@@ -269,6 +332,8 @@ describe("tenant isolation", () => {
       "stop",
       "transport_event",
       "document",
+      "driver_link",
+      "driver_consent",
     ]) {
       expect(await count({}, `FROM ${table}`), table).toBe(0);
     }

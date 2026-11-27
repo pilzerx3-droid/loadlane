@@ -16,6 +16,11 @@ export interface TenantContext {
    */
   authIssuer?: string;
   authSubject?: string;
+  /**
+   * SHA-256 hex of a presented Driver Link token (migration 0008). Makes exactly that one link row
+   * visible so the API can resolve the organization. Set it only from a token the request carried.
+   */
+  driverTokenHash?: string;
 }
 
 export interface TenantSession {
@@ -61,6 +66,7 @@ export async function withTenant<T>(
   const userId = assertUuid("userId", context.userId);
   const authIssuer = assertText("authIssuer", context.authIssuer);
   const authSubject = assertText("authSubject", context.authSubject);
+  const driverTokenHash = assertText("driverTokenHash", context.driverTokenHash);
 
   const client = await pool.connect();
   let brokenConnection: Error | undefined;
@@ -68,8 +74,9 @@ export async function withTenant<T>(
     await client.query("BEGIN");
     await client.query(
       `SELECT set_config('app.organization_id', $1, true), set_config('app.user_id', $2, true),
-              set_config('app.auth_issuer', $3, true), set_config('app.auth_subject', $4, true)`,
-      [organizationId, userId, authIssuer, authSubject],
+              set_config('app.auth_issuer', $3, true), set_config('app.auth_subject', $4, true),
+              set_config('app.driver_token_hash', $5, true)`,
+      [organizationId, userId, authIssuer, authSubject, driverTokenHash],
     );
     const result = await fn({ db: drizzle({ client, schema }), client });
     await client.query("COMMIT");
