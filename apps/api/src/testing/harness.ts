@@ -49,6 +49,8 @@ export interface TestApi {
   }): Promise<string>;
   /** Runs a statement as the table owner (FORCE is switched off first, so it also works for a non-superuser owner). */
   asOwner(sql: string, params?: unknown[]): Promise<void>;
+  /** Reads rows as the database owner (bypasses row-level security): for assertions only. */
+  ownerRows(sql: string, params?: unknown[]): Promise<Record<string, unknown>[]>;
   close(): Promise<void>;
 }
 
@@ -155,6 +157,9 @@ export async function startTestApi(
       } finally {
         client.release();
       }
+    },
+    async ownerRows(sql, params = []) {
+      return (await db.ownerPool.query(sql, params)).rows as Record<string, unknown>[];
     },
     async close() {
       await app.close();
