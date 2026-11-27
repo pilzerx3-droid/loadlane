@@ -1,10 +1,10 @@
 # ADR 0003: Auth hosted oidc
 
-Status: Proposed (comparison done, waiting for the product owner's choice of provider)
+Status: Accepted. The product owner chose ZITADEL Cloud (US region) on 2026-11-27. Not yet verified against a live instance; this ADR is updated when that has been done.
 
 ## Decision so far
 
-Use a hosted OIDC provider with organization and SSO support, behind our own interface so it can be swapped. Auth.js is not chosen because the API is a separate NestJS service. The comparison below was done in the P1-06 spike. The recommendation is **ZITADEL Cloud in its US region**, used only through standard OIDC. The choice is not final until the product owner confirms it.
+Use a hosted OIDC provider with organization and SSO support, behind our own interface so it can be swapped. Auth.js is not chosen because the API is a separate NestJS service. The comparison below was done in the P1-06 spike. The decision is **ZITADEL Cloud in its US region**, used only through standard OIDC, with no ZITADEL SDK.
 
 ## Where tenancy lives
 
