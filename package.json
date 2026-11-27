@@ -10,8 +10,13 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "typecheck": "pnpm -r run typecheck",
-    "test": "pnpm -r run test"
+    "typecheck": "tsc -p tsconfig.json && pnpm -r run typecheck",
+    "test": "pnpm -r run test",
+    "infra:up": "node scripts/infra.ts up",
+    "infra:down": "node scripts/infra.ts down",
+    "infra:reset": "node scripts/infra.ts reset",
+    "infra:logs": "node scripts/infra.ts logs",
+    "infra:check": "node scripts/check-infra.ts"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

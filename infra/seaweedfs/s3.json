@@ -1,0 +1,14 @@
+{
+  "identities": [
+    {
+      "name": "loadlane-dev",
+      "credentials": [
+        {
+          "accessKey": "loadlane_dev",
+          "secretKey": "loadlane_dev_secret"
+        }
+      ],
+      "actions": ["Admin", "Read", "List", "Tagging", "Write"]
+    }
+  ]
+}

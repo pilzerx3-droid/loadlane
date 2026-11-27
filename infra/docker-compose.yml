@@ -1,0 +1,57 @@
+# Local development infrastructure. Not for production use.
+# Start with `pnpm infra:up`, verify with `pnpm infra:check`.
+name: loadlane
+
+services:
+  postgres:
+    image: postgis/postgis:18-3.7
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-loadlane}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-loadlane_dev_only}
+      POSTGRES_DB: ${POSTGRES_DB:-loadlane}
+    ports:
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      # PostgreSQL 18 images keep data in a versioned subdirectory below this path.
+      - postgres-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", 'pg_isready -U "$${POSTGRES_USER}" -d "$${POSTGRES_DB}"']
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+
+  valkey:
+    image: valkey/valkey:9.2-alpine
+    ports:
+      - "127.0.0.1:${VALKEY_PORT:-6379}:6379"
+    volumes:
+      - valkey-data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "valkey-cli ping | grep -q PONG"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  seaweedfs:
+    image: chrislusf/seaweedfs:4.55
+    # Single-node server with master, volume, filer and S3 gateway.
+    command: >
+      server -dir=/data -ip=seaweedfs -ip.bind=0.0.0.0
+      -s3 -s3.port=8333 -s3.config=/etc/seaweedfs/s3.json
+    ports:
+      - "127.0.0.1:${S3_PORT:-8333}:8333"
+    volumes:
+      - seaweedfs-data:/data
+      - ./seaweedfs/s3.json:/etc/seaweedfs/s3.json:ro
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:9333/cluster/status"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 10s
+
+volumes:
+  postgres-data:
+  valkey-data:
+  seaweedfs-data:
