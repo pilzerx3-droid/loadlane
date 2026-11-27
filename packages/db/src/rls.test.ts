@@ -30,6 +30,8 @@ const TENANT_TABLES = [
   "document",
   "driver_link",
   "driver_consent",
+  "position_event",
+  "last_position",
 ] as const;
 
 /** Tables in schema public that deliberately have no row-level security. */
@@ -116,6 +118,14 @@ async function seedOrganization(
     await c.query(
       "INSERT INTO driver_consent (organization_id, driver_link_id, text_version) VALUES ($1, $2, 1)",
       [organizationId, linkRow.rows[0]?.id],
+    );
+    await c.query(
+      "INSERT INTO position_event (organization_id, transport_id, driver_link_id, recorded_at, latitude, longitude, accuracy_m) VALUES ($1, $2, $3, now(), 32.78, -96.8, 12)",
+      [organizationId, transportRow.rows[0]?.id, linkRow.rows[0]?.id],
+    );
+    await c.query(
+      "INSERT INTO last_position (organization_id, transport_id, recorded_at, received_at, latitude, longitude) VALUES ($1, $2, now(), now(), 32.78, -96.8)",
+      [organizationId, transportRow.rows[0]?.id],
     );
   });
 }
@@ -224,6 +234,16 @@ describe("tenant isolation", () => {
         "INSERT INTO driver_consent (organization_id, driver_link_id, text_version) VALUES ($1, gen_random_uuid(), 1)",
         [orgB],
       ],
+      [
+        "position_event",
+        "INSERT INTO position_event (organization_id, transport_id, driver_link_id, recorded_at, latitude, longitude) VALUES ($1, gen_random_uuid(), gen_random_uuid(), now(), 1, 1)",
+        [orgB],
+      ],
+      [
+        "last_position",
+        "INSERT INTO last_position (organization_id, transport_id, recorded_at, received_at, latitude, longitude) VALUES ($1, gen_random_uuid(), now(), now(), 1, 1)",
+        [orgB],
+      ],
       ["transport_counter", "INSERT INTO transport_counter (organization_id) VALUES ($1)", [orgB]],
       ["carrier", "INSERT INTO carrier (organization_id, name) VALUES ($1, 'Forged')", [orgB]],
       [
@@ -317,6 +337,33 @@ describe("tenant isolation", () => {
     );
   });
 
+  it("position_event: cannot be updated, other organizations cannot delete, bad coordinates fail", async () => {
+    await expectPgError(
+      run({ organizationId: orgA }, (c) => c.query("UPDATE position_event SET latitude = 0")),
+      "42501",
+    );
+    const foreign = await run({ organizationId: orgA }, (c) =>
+      c.query("DELETE FROM position_event WHERE organization_id = $1", [orgB]),
+    );
+    expect(foreign.rowCount).toBe(0);
+    expect(await count({ organizationId: orgB }, "FROM position_event")).toBe(1);
+    const own = await run({ organizationId: orgA }, (c) =>
+      c.query<{ transport_id: string; driver_link_id: string }>(
+        "SELECT transport_id, driver_link_id FROM position_event",
+      ),
+    );
+    const row = own.rows[0];
+    await expectPgError(
+      run({ organizationId: orgA }, (c) =>
+        c.query(
+          "INSERT INTO position_event (organization_id, transport_id, driver_link_id, recorded_at, latitude, longitude) VALUES ($1, $2, $3, now(), 91, 0)",
+          [orgA, row?.transport_id, row?.driver_link_id],
+        ),
+      ),
+      "23514",
+    );
+  });
+
   it("returns nothing and rejects writes when no tenant is set", async () => {
     for (const table of [
       "organization",
@@ -334,6 +381,8 @@ describe("tenant isolation", () => {
       "document",
       "driver_link",
       "driver_consent",
+      "position_event",
+      "last_position",
     ]) {
       expect(await count({}, `FROM ${table}`), table).toBe(0);
     }

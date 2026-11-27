@@ -21,6 +21,20 @@ export {
   type TransportStatus,
 } from "./transport-status.ts";
 export {
+  FRESHNESS_LABELS,
+  LOW_QUALITY_ACCURACY_M,
+  MAX_CLOCK_SKEW_MS,
+  POSITION_AGING_MS,
+  POSITION_FRESH_MS,
+  checkPosition,
+  describeAge,
+  positionAgeMs,
+  positionFreshness,
+  type PositionCheck,
+  type PositionFreshness,
+  type PositionInput,
+} from "./position.ts";
+export {
   formatDateInZone,
   formatInZone,
   formatWindow,
