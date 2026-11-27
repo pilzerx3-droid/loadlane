@@ -1,7 +1,7 @@
 import { Global, Module, type DynamicModule } from "@nestjs/common";
 import { APP_FILTER, DiscoveryModule } from "@nestjs/core";
 import type pg from "pg";
-import type { ApiConfig } from "../config/env.ts";
+import type { RuntimeConfig } from "../config/env.ts";
 import { AccessDeclarationCheck } from "./access-declaration-check.ts";
 import { loggerModule, type LogOptions } from "./logging.ts";
 import { OpenApiController, OpenApiService } from "./openapi.ts";
@@ -9,7 +9,7 @@ import { ProblemFilter } from "./problem.ts";
 import { API_CONFIG, APP_POOL } from "./tokens.ts";
 
 export interface PlatformOptions {
-  config: Pick<ApiConfig, "oidcIssuer" | "oidcAudience">;
+  config: RuntimeConfig;
   /** Pool of the application role. The caller owns it and closes it on shutdown. */
   pool: pg.Pool;
   openApiEnabled: boolean;

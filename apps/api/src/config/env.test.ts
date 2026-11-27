@@ -18,6 +18,7 @@ describe("loadApiConfig", () => {
       logLevel: "info",
       rateLimitPerMinute: 120,
       openApiEnabled: true,
+      maxOrganizationsPerUser: 3,
     });
   });
 

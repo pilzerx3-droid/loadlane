@@ -2,7 +2,7 @@ import { Module, type DynamicModule } from "@nestjs/common";
 import { APP_GUARD } from "@nestjs/core";
 import { ThrottlerModule } from "@nestjs/throttler";
 import type pg from "pg";
-import type { ApiConfig } from "./config/env.ts";
+import type { RuntimeConfig } from "./config/env.ts";
 import { AuthenticationModule } from "./modules/authentication/index.ts";
 import { OrganizationsModule } from "./modules/organizations/index.ts";
 import { PLANNED_MODULES } from "./modules/planned-modules.ts";
@@ -12,7 +12,7 @@ import { PlatformModule } from "./platform/platform.module.ts";
 import { RateLimitGuard } from "./platform/rate-limit.ts";
 
 export interface AppModuleOptions {
-  config: Pick<ApiConfig, "oidcIssuer" | "oidcAudience">;
+  config: RuntimeConfig;
   /** Pool of the application role. The caller owns it and closes it on shutdown. */
   pool: pg.Pool;
   /** Tests shorten the wait before keys are refetched after a key rotation. */

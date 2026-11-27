@@ -32,7 +32,14 @@ export interface TestApi {
   person(label?: string): Promise<Person>;
   call(
     path: string,
-    options?: { token?: string; organizationId?: string; headers?: Record<string, string> },
+    options?: {
+      token?: string;
+      organizationId?: string;
+      headers?: Record<string, string>;
+      /** HTTP method. Default GET, or POST when a JSON body is given. */
+      method?: string;
+      json?: unknown;
+    },
   ): Promise<Response>;
   /** Creates an organization with memberships and roles through the application role. */
   seedOrganization(options: {
@@ -50,17 +57,24 @@ export interface TestApi {
  * logging is off by default; tests that look at those pass their own settings.
  */
 export async function startTestApi(
-  overrides: Partial<Omit<AppModuleOptions, "config" | "pool">> = {},
+  overrides: Partial<Omit<AppModuleOptions, "config" | "pool">> & {
+    maxOrganizationsPerUser?: number;
+  } = {},
 ): Promise<TestApi> {
+  const { maxOrganizationsPerUser, ...appOverrides } = overrides;
   const db = await createTestDatabase();
   const issuer = await startFakeIssuer("project-123");
   const app: INestApplication = await createApp({
-    config: { oidcIssuer: issuer.issuer, oidcAudience: issuer.audience },
+    config: {
+      oidcIssuer: issuer.issuer,
+      oidcAudience: issuer.audience,
+      ...(maxOrganizationsPerUser === undefined ? {} : { maxOrganizationsPerUser }),
+    },
     pool: db.appPool,
     jwksCooldownMs: 0,
     rateLimit: { limit: 1_000_000, windowMs: 60_000 },
     log: { level: "silent" },
-    ...overrides,
+    ...appOverrides,
   });
   await app.listen(0, "127.0.0.1");
   const baseUrl = await app.getUrl();
@@ -69,7 +83,12 @@ export async function startTestApi(
     const headers: Record<string, string> = { ...options.headers };
     if (options.token) headers["authorization"] = `Bearer ${options.token}`;
     if (options.organizationId) headers["x-organization-id"] = options.organizationId;
-    return fetch(`${baseUrl}${path}`, { headers });
+    if (options.json !== undefined) headers["content-type"] = "application/json";
+    return fetch(`${baseUrl}${path}`, {
+      method: options.method ?? (options.json === undefined ? "GET" : "POST"),
+      headers,
+      ...(options.json === undefined ? {} : { body: JSON.stringify(options.json) }),
+    });
   };
 
   return {

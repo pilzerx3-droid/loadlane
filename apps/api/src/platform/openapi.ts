@@ -7,6 +7,8 @@ import {
   type INestApplication,
 } from "@nestjs/common";
 import {
+  ApiBody,
+  ApiCreatedResponse,
   ApiOkResponse,
   ApiOperation,
   ApiQuery,
@@ -28,14 +30,29 @@ export function jsonSchema(schema: z.ZodType, io: "input" | "output" = "output")
 }
 
 /**
- * Documents a route from its Zod schemas: the success response and the query parameters. Who may call
- * the route and which headers it needs comes from @RequirePermissions and friends (see access.ts).
+ * Documents a route from its Zod schemas: the success response, the query parameters and the request
+ * body. Who may call the route and which headers it needs comes from @RequirePermissions and friends
+ * (see access.ts).
  */
-export function ApiRoute(options: { summary: string; response: z.ZodType; query?: z.ZodObject }) {
+export function ApiRoute(options: {
+  summary: string;
+  response: z.ZodType;
+  query?: z.ZodObject;
+  body?: z.ZodType;
+  /** 201 for routes that create something. Default 200. */
+  status?: 200 | 201;
+}) {
+  const success = {
+    description: options.status === 201 ? "Created" : "Success",
+    schema: jsonSchema(options.response),
+  };
   const decorators: MethodDecorator[] = [
     ApiOperation({ summary: options.summary }),
-    ApiOkResponse({ description: "Success", schema: jsonSchema(options.response) }),
+    options.status === 201 ? ApiCreatedResponse(success) : ApiOkResponse(success),
   ];
+  if (options.body) {
+    decorators.push(ApiBody({ required: true, schema: jsonSchema(options.body, "input") }));
+  }
   if (options.query) {
     const query = jsonSchema(options.query, "input") as {
       properties?: Record<string, JsonSchema>;
@@ -55,6 +72,7 @@ const METHODS = ["get", "post", "put", "patch", "delete", "head", "options"] as 
 type Operation = {
   security?: unknown[];
   parameters?: unknown[];
+  requestBody?: unknown;
   responses?: Record<string, unknown>;
   [extension: string]: unknown;
 };
@@ -75,17 +93,18 @@ export function finalizeOpenApi(document: OpenAPIObject): OpenAPIObject {
       const operation = pathItem[method] as Operation | undefined;
       if (!operation) continue;
       const signedIn = (operation.security?.length ?? 0) > 0;
+      const hasInput =
+        (operation.parameters?.length ?? 0) > 0 || operation.requestBody !== undefined;
       const responses = (operation.responses ??= {});
 
-      if ((operation.parameters?.length ?? 0) > 0)
-        responses["400"] ??= problem("The request is not valid");
+      if (hasInput) responses["400"] ??= problem("The request is not valid");
       if (signedIn) {
         responses["401"] ??= problem("Missing or invalid access token");
         responses["403"] ??= problem(
           "E-mail not verified, account disabled, not an active member of the organization, or a permission is missing",
         );
         responses["409"] ??= problem(
-          "The e-mail address belongs to an account with a different sign-in",
+          "Conflict: for example a sign-in identity with a known e-mail address, or a name that is already taken",
         );
         responses["503"] ??= problem("The sign-in provider is not reachable");
       }

@@ -329,6 +329,7 @@ describe("OpenAPI document", () => {
       "MeController.me",
       "MembersController.list",
       "OpenApiController.document",
+      "OrganizationController.create",
       "OrganizationController.get",
     ]);
     for (const route of routes) {

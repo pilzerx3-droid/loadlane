@@ -16,7 +16,13 @@ export interface ApiConfig {
   rateLimitPerMinute: number;
   /** Serve /v1/openapi.json. Defaults to on, except when NODE_ENV is production. */
   openApiEnabled: boolean;
+  /** How many organizations one person may create through the API. */
+  maxOrganizationsPerUser: number;
 }
+
+/** What the modules need at run time. Tests pass only the parts they use. */
+export type RuntimeConfig = Pick<ApiConfig, "oidcIssuer" | "oidcAudience"> &
+  Partial<Pick<ApiConfig, "maxOrganizationsPerUser">>;
 
 const LOCAL_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]"]);
 
@@ -36,6 +42,7 @@ const envSchema = z.object({
   LOG_LEVEL: z.enum(["fatal", "error", "warn", "info", "debug", "trace", "silent"]).default("info"),
   RATE_LIMIT_PER_MINUTE: z.coerce.number().int().min(1).max(1_000_000).default(120),
   OPENAPI_ENABLED: z.enum(["true", "false"]).optional(),
+  MAX_ORGANIZATIONS_PER_USER: z.coerce.number().int().min(1).max(1000).default(3),
   NODE_ENV: z.string().optional(),
 });
 
@@ -60,6 +67,7 @@ export function loadApiConfig(env: Record<string, string | undefined>): ApiConfi
     openApiEnabled: values.OPENAPI_ENABLED
       ? values.OPENAPI_ENABLED === "true"
       : values.NODE_ENV !== "production",
+    maxOrganizationsPerUser: values.MAX_ORGANIZATIONS_PER_USER,
   };
 }
 

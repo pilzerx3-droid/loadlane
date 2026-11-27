@@ -1,6 +1,7 @@
 import { schema, withTenant } from "@loadlane/db";
 import { and, eq } from "drizzle-orm";
 import type pg from "pg";
+import { pgErrorInfo } from "../../platform/pg-error.ts";
 import type { VerifiedToken } from "./token-verifier.ts";
 import type { UserInfo, UserInfoSource } from "./userinfo.ts";
 
@@ -31,19 +32,6 @@ export class UserDeactivatedError extends Error {
     super("The account is deactivated");
     this.name = "UserDeactivatedError";
   }
-}
-
-interface PgErrorShape {
-  code?: string;
-  constraint?: string;
-}
-
-/** Drizzle wraps driver errors; look at the error itself and at its cause. */
-function pgError(error: unknown): PgErrorShape {
-  const candidate = error as { cause?: unknown } & PgErrorShape;
-  return typeof candidate.cause === "object" && candidate.cause !== null
-    ? candidate.cause
-    : candidate;
 }
 
 /**
@@ -115,7 +103,7 @@ export class UserResolver {
           }),
       );
     } catch (error) {
-      const { code, constraint } = pgError(error);
+      const { code, constraint } = pgErrorInfo(error);
       const duplicate =
         code === "23505" &&
         (constraint === "app_user_email_key" || constraint === "app_user_auth_identity_key");
