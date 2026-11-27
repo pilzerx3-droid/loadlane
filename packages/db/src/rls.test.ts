@@ -27,6 +27,7 @@ const TENANT_TABLES = [
   "transport",
   "stop",
   "transport_event",
+  "document",
 ] as const;
 
 /** Tables in schema public that deliberately have no row-level security. */
@@ -101,6 +102,10 @@ async function seedOrganization(
     await c.query(
       "INSERT INTO transport_event (organization_id, transport_id, source, actor_user_id, to_status) VALUES ($1, $2, 'user', $3, 'created')",
       [organizationId, transportRow.rows[0]?.id, adminUserId],
+    );
+    await c.query(
+      "INSERT INTO document (organization_id, transport_id, type, filename, content_type, size_bytes, storage_key, uploaded_by_user_id) VALUES ($1, $2, 'photo', 'a.png', 'image/png', 10, $3, $4)",
+      [organizationId, transportRow.rows[0]?.id, `test/${organizationId}/a.png`, adminUserId],
     );
   });
 }
@@ -190,6 +195,11 @@ describe("tenant isolation", () => {
         [stranger],
       ],
       ["customer", "INSERT INTO customer (organization_id, name) VALUES ($1, 'Forged')", [orgB]],
+      [
+        "document",
+        "INSERT INTO document (organization_id, transport_id, type, filename, content_type, size_bytes, storage_key, uploaded_by_user_id) VALUES ($1, gen_random_uuid(), 'photo', 'x', 'image/png', 1, 'k', $2)",
+        [orgB, userA],
+      ],
       ["transport_counter", "INSERT INTO transport_counter (organization_id) VALUES ($1)", [orgB]],
       ["carrier", "INSERT INTO carrier (organization_id, name) VALUES ($1, 'Forged')", [orgB]],
       [
@@ -228,8 +238,9 @@ describe("tenant isolation", () => {
         c.query("UPDATE transport SET notes = 'hacked' WHERE organization_id = $1", [orgB]),
         c.query("UPDATE stop SET notes = 'hacked' WHERE organization_id = $1", [orgB]),
         c.query("DELETE FROM stop WHERE organization_id = $1", [orgB]),
+        c.query("UPDATE document SET filename = 'hacked' WHERE organization_id = $1", [orgB]),
       ]);
-      expect(updates.map((result) => result.rowCount)).toEqual([0, 0, 0, 0, 0, 0, 0, 0, 0]);
+      expect(updates.map((result) => result.rowCount)).toEqual([0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
     });
 
     // Organization B is untouched.
@@ -257,6 +268,7 @@ describe("tenant isolation", () => {
       "transport",
       "stop",
       "transport_event",
+      "document",
     ]) {
       expect(await count({}, `FROM ${table}`), table).toBe(0);
     }

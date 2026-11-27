@@ -5,3 +5,4 @@ export * from "./membership.ts";
 export * from "./audit-log.ts";
 export * from "./directory.ts";
 export * from "./transport.ts";
+export * from "./document.ts";
