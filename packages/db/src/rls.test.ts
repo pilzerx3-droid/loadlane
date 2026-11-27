@@ -23,6 +23,10 @@ const TENANT_TABLES = [
   "customer",
   "carrier",
   "location",
+  "transport_counter",
+  "transport",
+  "stop",
+  "transport_event",
 ] as const;
 
 /** Tables in schema public that deliberately have no row-level security. */
@@ -72,15 +76,31 @@ async function seedOrganization(
       "INSERT INTO audit_log (organization_id, actor_type, actor_user_id, action) VALUES ($1, 'user', $2, 'organization.created')",
       [organizationId, adminUserId],
     );
-    await c.query("INSERT INTO customer (organization_id, name) VALUES ($1, 'Customer')", [
-      organizationId,
-    ]);
+    const customerRow = await c.query<{ id: string }>(
+      "INSERT INTO customer (organization_id, name) VALUES ($1, 'Customer') RETURNING id",
+      [organizationId],
+    );
     await c.query("INSERT INTO carrier (organization_id, name) VALUES ($1, 'Carrier')", [
       organizationId,
     ]);
-    await c.query(
-      "INSERT INTO location (organization_id, name, address_line1, city, state, postal_code, timezone) VALUES ($1, 'Dock', '1 Main St', 'Dallas', 'TX', '75001', 'America/Chicago')",
+    const locationRow = await c.query<{ id: string }>(
+      "INSERT INTO location (organization_id, name, address_line1, city, state, postal_code, timezone) VALUES ($1, 'Dock', '1 Main St', 'Dallas', 'TX', '75001', 'America/Chicago') RETURNING id",
       [organizationId],
+    );
+    await c.query("INSERT INTO transport_counter (organization_id, last_number) VALUES ($1, 1)", [
+      organizationId,
+    ]);
+    const transportRow = await c.query<{ id: string }>(
+      "INSERT INTO transport (organization_id, number, customer_id, created_by_user_id) VALUES ($1, 1, $2, $3) RETURNING id",
+      [organizationId, customerRow.rows[0]?.id, adminUserId],
+    );
+    await c.query(
+      "INSERT INTO stop (organization_id, transport_id, sequence, type, location_id, window_start, window_end) VALUES ($1, $2, 1, 'pickup', $3, now(), now() + interval '2 hours')",
+      [organizationId, transportRow.rows[0]?.id, locationRow.rows[0]?.id],
+    );
+    await c.query(
+      "INSERT INTO transport_event (organization_id, transport_id, source, actor_user_id, to_status) VALUES ($1, $2, 'user', $3, 'created')",
+      [organizationId, transportRow.rows[0]?.id, adminUserId],
     );
   });
 }
@@ -170,6 +190,7 @@ describe("tenant isolation", () => {
         [stranger],
       ],
       ["customer", "INSERT INTO customer (organization_id, name) VALUES ($1, 'Forged')", [orgB]],
+      ["transport_counter", "INSERT INTO transport_counter (organization_id) VALUES ($1)", [orgB]],
       ["carrier", "INSERT INTO carrier (organization_id, name) VALUES ($1, 'Forged')", [orgB]],
       [
         "location",
@@ -204,8 +225,11 @@ describe("tenant isolation", () => {
         c.query("UPDATE customer SET name = 'hacked' WHERE organization_id = $1", [orgB]),
         c.query("UPDATE carrier SET name = 'hacked' WHERE organization_id = $1", [orgB]),
         c.query("UPDATE location SET name = 'hacked' WHERE organization_id = $1", [orgB]),
+        c.query("UPDATE transport SET notes = 'hacked' WHERE organization_id = $1", [orgB]),
+        c.query("UPDATE stop SET notes = 'hacked' WHERE organization_id = $1", [orgB]),
+        c.query("DELETE FROM stop WHERE organization_id = $1", [orgB]),
       ]);
-      expect(updates.map((result) => result.rowCount)).toEqual([0, 0, 0, 0, 0, 0]);
+      expect(updates.map((result) => result.rowCount)).toEqual([0, 0, 0, 0, 0, 0, 0, 0, 0]);
     });
 
     // Organization B is untouched.
@@ -229,6 +253,10 @@ describe("tenant isolation", () => {
       "customer",
       "carrier",
       "location",
+      "transport_counter",
+      "transport",
+      "stop",
+      "transport_event",
     ]) {
       expect(await count({}, `FROM ${table}`), table).toBe(0);
     }
@@ -482,5 +510,84 @@ describe("guards for future tables", () => {
       "SELECT count(*)::int AS n FROM pg_tables WHERE schemaname = 'public' AND tableowner = 'loadlane_app'",
     );
     expect(owned.rows[0]?.n).toBe(0);
+  });
+});
+
+describe("transports", () => {
+  it("cannot point at a customer, carrier or location of another organization", async () => {
+    const foreign = await run({ organizationId: orgB }, (c) =>
+      c.query<{ id: string }>("SELECT id FROM customer"),
+    );
+    const foreignCustomer = foreign.rows[0]?.id;
+    // The tenant check passes (own organization id), the composite foreign key refuses the foreign customer.
+    await expectPgError(
+      run({ organizationId: orgA, userId: userA }, (c) =>
+        c.query(
+          "INSERT INTO transport (organization_id, number, customer_id, created_by_user_id) VALUES ($1, 99, $2, $3)",
+          [orgA, foreignCustomer, userA],
+        ),
+      ),
+      "23503",
+    );
+    const foreignLocation = (
+      await run({ organizationId: orgB }, (c) => c.query<{ id: string }>("SELECT id FROM location"))
+    ).rows[0]?.id;
+    const ownTransport = (
+      await run({ organizationId: orgA }, (c) =>
+        c.query<{ id: string }>("SELECT id FROM transport"),
+      )
+    ).rows[0]?.id;
+    await expectPgError(
+      run({ organizationId: orgA, userId: userA }, (c) =>
+        c.query(
+          "INSERT INTO stop (organization_id, transport_id, sequence, type, location_id, window_start, window_end) VALUES ($1, $2, 2, 'delivery', $3, now(), now())",
+          [orgA, ownTransport, foreignLocation],
+        ),
+      ),
+      "23503",
+    );
+  });
+
+  it("refuses a transport past the carrier rule and a window that ends before it starts", async () => {
+    const ownCustomer = (
+      await run({ organizationId: orgA }, (c) => c.query<{ id: string }>("SELECT id FROM customer"))
+    ).rows[0]?.id;
+    await expectPgError(
+      run({ organizationId: orgA, userId: userA }, (c) =>
+        c.query(
+          "INSERT INTO transport (organization_id, number, customer_id, created_by_user_id, status) VALUES ($1, 98, $2, $3, 'in_transit')",
+          [orgA, ownCustomer, userA],
+        ),
+      ),
+      "23514",
+    );
+    const ownTransport = (
+      await run({ organizationId: orgA }, (c) =>
+        c.query<{ id: string }>("SELECT id FROM transport"),
+      )
+    ).rows[0]?.id;
+    const ownLocation = (
+      await run({ organizationId: orgA }, (c) => c.query<{ id: string }>("SELECT id FROM location"))
+    ).rows[0]?.id;
+    await expectPgError(
+      run({ organizationId: orgA, userId: userA }, (c) =>
+        c.query(
+          "INSERT INTO stop (organization_id, transport_id, sequence, type, location_id, window_start, window_end) VALUES ($1, $2, 2, 'delivery', $3, now(), now() - interval '1 hour')",
+          [orgA, ownTransport, ownLocation],
+        ),
+      ),
+      "23514",
+    );
+  });
+
+  it("keeps the event history append-only, even for the owner", async () => {
+    await expectPgError(
+      run({ organizationId: orgA }, (c) => c.query("UPDATE transport_event SET note = 'x'")),
+      "42501",
+    );
+    await expectPgError(
+      testDb.ownerPool.query("DELETE FROM transport_event WHERE organization_id = $1", [orgA]),
+      "23001",
+    );
   });
 });
