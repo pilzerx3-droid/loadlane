@@ -3,6 +3,7 @@
 B2B SaaS for transport management. Three pillars: SEE (transport visibility and tracking), CALCULATE (freight calculator, tariffs, quotes), EXECUTE (spot freight: offer, bid, award, track).
 Chain: Calculate -> Offer -> Assign -> Track -> Deliver -> Analyze.
 Target market: **United States first.** Full scope and requirements: @docs/masterprompt.md (source of truth for product scope).
+Precedence: the masterprompt was written EU-first. Where it conflicts with this file or an ADR on region, units, currency, documents (no CMR), privacy law or auth provider, this file and the ADRs win.
 
 ## Language
 
@@ -38,7 +39,18 @@ Planned layout: apps/web, apps/api, apps/worker, packages/db, packages/shared, p
 
 ## Commands
 
-TODO: fill in once the repo exists (install, dev, test, lint, db migrate).
+Requires Node 26+, pnpm 12, Docker Desktop. Copy `.env.example` to `.env` first.
+
+- `pnpm install`: install all workspace dependencies
+- `pnpm lint` / `pnpm typecheck` / `pnpm format:check` / `pnpm test`: run after every step
+- `pnpm format`: apply Prettier
+- `pnpm infra:up` / `infra:down` / `infra:reset` (deletes volumes) / `infra:logs`: local PostGIS, Valkey, SeaweedFS
+- `pnpm infra:check`: verify all three services are reachable
+- `pnpm db:migrate`: apply SQL migrations from `packages/db/migrations`
+- `pnpm db:generate`: generate a migration from schema changes (rename it, review the SQL)
+- `pnpm db:check`: fail on schema/migration drift (needs migrations committed)
+
+Notes: TypeScript is pinned to 6.0.x until typescript-eslint supports 7.x. Tests in `packages/db` need the local stack running. Local stack uses Valkey (BSD-3) instead of Redis and SeaweedFS (Apache-2.0) instead of MinIO for license reasons.
 
 ## Current phase
 

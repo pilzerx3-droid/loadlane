@@ -1,2 +1,2 @@
-// Database schema, migrations and client. Placeholder until its backlog item is implemented.
-export {};
+export { runMigrations, MIGRATIONS_FOLDER } from "./migrate.ts";
+export { databaseUrlFromEnv } from "./env.ts";

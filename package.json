@@ -16,7 +16,10 @@
     "infra:down": "node scripts/infra.ts down",
     "infra:reset": "node scripts/infra.ts reset",
     "infra:logs": "node scripts/infra.ts logs",
-    "infra:check": "node scripts/check-infra.ts"
+    "infra:check": "node scripts/check-infra.ts",
+    "db:migrate": "pnpm --filter @loadlane/db run db:migrate",
+    "db:generate": "pnpm --filter @loadlane/db run db:generate",
+    "db:check": "pnpm --filter @loadlane/db run db:check"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
