@@ -4,6 +4,7 @@ import { Button, Card, PageHeader } from "@loadlane/ui";
 import { apiRequest } from "../lib/api-client";
 import { getAuthDeps } from "../lib/deps";
 import { documentListSchema } from "../lib/documents";
+import { driverLinkListSchema } from "../lib/driver-links";
 import { parsePage } from "../lib/paging";
 import { isoToLocalInput } from "@loadlane/shared";
 import {
@@ -17,6 +18,7 @@ import { emptyTransportForm, type TransportFormValues } from "../lib/transport-f
 import { requireOrganizationPage, type ActiveViewer } from "../lib/viewer";
 import { AppShell } from "./app-shell";
 import { DocumentsCard } from "./documents-card";
+import { DriverLinksCard } from "./driver-links-card";
 import { ForbiddenNotice, Notice } from "./notices";
 import { TransportForm, type Option } from "./transport-form";
 import { TransportImportForm } from "./transport-import-form";
@@ -56,6 +58,9 @@ const PROBLEMS: Record<string, string> = {
   document_forbidden: "You do not have permission to change documents.",
   document_not_found: "That document or transport no longer exists.",
   document_unavailable: "The document could not be saved right now. Please try again in a moment.",
+  driver_link_forbidden: "You do not have permission to change Driver Links.",
+  driver_link_not_found: "That Driver Link no longer exists.",
+  driver_link_unavailable: "The Driver Link could not be changed right now. Please try again.",
 };
 
 export async function TransportsListPage({
@@ -254,6 +259,8 @@ export async function TransportDetailPage({ id, problem }: { id: string; problem
   const documents = canReadDocuments
     ? await call(viewer, `/v1/transports/${id}/documents`, documentListSchema)
     : undefined;
+  const driverLinks = await call(viewer, `/v1/transports/${id}/driver-links`, driverLinkListSchema);
+  const timeZone = transport.stops[0]?.location.timezone ?? "UTC";
   return (
     <AppShell viewer={viewer}>
       <PageHeader
@@ -289,6 +296,20 @@ export async function TransportDetailPage({ id, problem }: { id: string; problem
           <Notice>The documents could not be loaded right now.</Notice>
         </div>
       ) : null}
+      {driverLinks.ok ? (
+        <div className="mt-5">
+          <DriverLinksCard
+            transportId={transport.id}
+            links={driverLinks.data.items}
+            canManage={canManage}
+            timeZone={timeZone}
+          />
+        </div>
+      ) : (
+        <div className="mt-5">
+          <Notice>The Driver Links could not be loaded right now.</Notice>
+        </div>
+      )}
     </AppShell>
   );
 }

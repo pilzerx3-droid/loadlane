@@ -36,6 +36,7 @@ const KIND_LABELS: Record<string, string> = {
   carrier: "Carrier",
   location: "Location",
   organization: "Organization",
+  driver_link: "Driver Link",
 };
 
 const VERB_LABELS: Record<string, string> = {
@@ -43,6 +44,7 @@ const VERB_LABELS: Record<string, string> = {
   updated: "changed",
   archived: "archived",
   restored: "restored",
+  revoked: "revoked",
   deleted: "removed",
   uploaded: "uploaded",
   downloaded: "downloaded",
