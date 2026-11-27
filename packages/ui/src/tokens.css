@@ -1,0 +1,79 @@
+/*
+ * Design tokens. The colors come from the prototype (docs/reference/prototype/README.md): a calm
+ * neutral surface with a lime accent. Light is the default; dark follows the system setting unless the
+ * person chose a theme (next-themes sets data-theme on <html>).
+ * Contrast: muted text on the page is at least 4.5:1 in both themes.
+ */
+:root {
+  color-scheme: light;
+  --background: #f3f4ef;
+  --card: #ffffff;
+  --foreground: #131513;
+  --muted: rgb(127 127 127 / 0.15);
+  --muted-foreground: #6a6f6a;
+  --border: rgb(19 21 19 / 0.1);
+  --accent: #c8ec2a;
+  --accent-foreground: #10130a;
+  --positive: #3b7a00;
+  --warning: #8f5400;
+  --danger: #b42318;
+  --ring: #3b7a00;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --background: #0e0f10;
+  --card: #151617;
+  --foreground: #f3f4f2;
+  --muted: rgb(127 127 127 / 0.2);
+  --muted-foreground: #8d9093;
+  --border: rgb(255 255 255 / 0.09);
+  --accent: #d2f23c;
+  --accent-foreground: #10130a;
+  --positive: #d2f23c;
+  --warning: #ffb020;
+  --danger: #ff8a80;
+  --ring: #d2f23c;
+}
+
+/* Before the theme script has run, or without JavaScript, follow the system setting. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]):not([data-theme="dark"]) {
+    color-scheme: dark;
+    --background: #0e0f10;
+    --card: #151617;
+    --foreground: #f3f4f2;
+    --muted: rgb(127 127 127 / 0.2);
+    --muted-foreground: #8d9093;
+    --border: rgb(255 255 255 / 0.09);
+    --accent: #d2f23c;
+    --accent-foreground: #10130a;
+    --positive: #d2f23c;
+    --warning: #ffb020;
+    --danger: #ff8a80;
+    --ring: #d2f23c;
+  }
+}
+
+/* Names for Tailwind: bg-background, text-muted-foreground, border-border, bg-accent, ... */
+@theme inline {
+  --color-background: var(--background);
+  --color-card: var(--card);
+  --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-positive: var(--positive);
+  --color-warning: var(--warning);
+  --color-danger: var(--danger);
+  --color-ring: var(--ring);
+
+  --font-sans: "Inter Variable", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono:
+    "JetBrains Mono Variable", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+
+  --radius-card: 0.875rem;
+  --radius-control: 0.625rem;
+}

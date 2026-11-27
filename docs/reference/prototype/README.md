@@ -28,8 +28,10 @@ Design tokens (colors are the prototype's):
 | Accent (lime)       | `#C8EC2A` | `#D2F23C` |
 | Accent text on lime | `#10130A` | `#10130A` |
 | Positive / links    | `#3B7A00` | `#D2F23C` |
-| Warning (late)      | `#B26B00` | `#FFB020` |
+| Warning (late)      | `#8F5400` | `#FFB020` |
 | Border              | 10% black | 9% white  |
+
+The light warning color is darker than the prototype's `#B26B00` (3.8:1 on the page): `#8F5400` reaches the 4.5:1 minimum for text, also on status chips. `packages/ui` checks all token contrasts in a test.
 
 Type: Inter for text, JetBrains Mono for buttons and labels. Radius 9 to 14 px. Light and dark themes follow the system setting.
 
