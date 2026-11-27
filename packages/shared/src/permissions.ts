@@ -16,6 +16,12 @@ export const PERMISSIONS = [
   "member:read",
   "member:manage",
   "audit:read",
+  "customer:read",
+  "customer:manage",
+  "carrier:read",
+  "carrier:manage",
+  "location:read",
+  "location:manage",
 ] as const;
 export type Permission = (typeof PERMISSIONS)[number];
 
@@ -25,8 +31,25 @@ export type Permission = (typeof PERMISSIONS)[number];
  */
 export const ROLE_PERMISSIONS: Readonly<Record<RoleKey, readonly Permission[]>> = {
   admin: PERMISSIONS,
-  dispatcher: ["organization:read", "member:read"],
-  sales: ["organization:read", "member:read"],
+  dispatcher: [
+    "organization:read",
+    "member:read",
+    "customer:read",
+    "customer:manage",
+    "carrier:read",
+    "carrier:manage",
+    "location:read",
+    "location:manage",
+  ],
+  sales: [
+    "organization:read",
+    "member:read",
+    "customer:read",
+    "customer:manage",
+    "carrier:read",
+    "location:read",
+    "location:manage",
+  ],
   carrier_user: ["organization:read"],
 };
 

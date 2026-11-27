@@ -4,6 +4,7 @@ import { ThrottlerModule } from "@nestjs/throttler";
 import type pg from "pg";
 import type { RuntimeConfig } from "./config/env.ts";
 import { AuthenticationModule } from "./modules/authentication/index.ts";
+import { LocationsModule } from "./modules/locations/index.ts";
 import { OrganizationsModule } from "./modules/organizations/index.ts";
 import { PLANNED_MODULES } from "./modules/planned-modules.ts";
 import { AccessGuard, UsersPermissionsModule } from "./modules/users-permissions/index.ts";
@@ -62,6 +63,7 @@ export class AppModule {
         ),
         UsersPermissionsModule,
         OrganizationsModule,
+        LocationsModule,
         ...PLANNED_MODULES,
       ],
       providers: [

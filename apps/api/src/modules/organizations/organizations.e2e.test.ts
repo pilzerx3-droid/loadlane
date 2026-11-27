@@ -2,6 +2,7 @@
 // Real app, real database with row-level security, fake issuer.
 import { randomUUID } from "node:crypto";
 import { withTenant } from "@loadlane/db";
+import { PERMISSIONS, permissionsForRoles } from "@loadlane/shared";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { startTestApi, type TestApi } from "../../testing/harness.ts";
 import { slugify } from "./organization.schemas.ts";
@@ -56,13 +57,7 @@ describe("POST /v1/organizations", () => {
     expect(organizations[0]).toMatchObject({
       id: organization["id"],
       roles: ["admin"],
-      permissions: [
-        "audit:read",
-        "member:manage",
-        "member:read",
-        "organization:manage",
-        "organization:read",
-      ],
+      permissions: [...PERMISSIONS].sort(),
     });
 
     const asAdmin = await api.call("/v1/members", {
@@ -269,10 +264,10 @@ describe("roles and permissions in GET /v1/me", () => {
       bareOrg,
     ]);
     expect(organizations[0]).toMatchObject({ roles: ["admin"] });
-    expect(organizations[0]?.permissions).toHaveLength(5);
+    expect(organizations[0]?.permissions).toEqual([...PERMISSIONS].sort());
     expect(organizations[1]).toMatchObject({
       roles: ["carrier_user", "sales"],
-      permissions: ["member:read", "organization:read"],
+      permissions: [...permissionsForRoles(["sales"])].sort(),
     });
     expect(organizations[2]).toMatchObject({ roles: [], permissions: [] });
   });

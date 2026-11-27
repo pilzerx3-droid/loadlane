@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { canonicalTimeZone } from "../../platform/time-zone.ts";
 
 export const organizationResponseSchema = z.object({
   id: z.uuid(),
@@ -13,15 +14,6 @@ export const organizationResponseSchema = z.object({
 });
 
 export type OrganizationResponse = z.infer<typeof organizationResponseSchema>;
-
-/** The canonical IANA name of a time zone, or undefined when the runtime does not know it. */
-export function canonicalTimeZone(value: string): string | undefined {
-  try {
-    return new Intl.DateTimeFormat("en-US", { timeZone: value }).resolvedOptions().timeZone;
-  } catch {
-    return undefined;
-  }
-}
 
 /**
  * Input for creating an organization. Region, units and currency are not accepted: new organizations

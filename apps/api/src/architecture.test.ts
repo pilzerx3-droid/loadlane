@@ -40,7 +40,7 @@ const moduleNames = readdirSync(modulesRoot).filter((name) =>
 
 describe("module boundaries", () => {
   it("finds the modules of the masterprompt", () => {
-    expect(moduleNames.length).toBe(22);
+    expect(moduleNames.length).toBe(23);
     expect(moduleNames).toEqual(
       expect.arrayContaining([
         "authentication",

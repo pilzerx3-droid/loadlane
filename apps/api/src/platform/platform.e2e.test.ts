@@ -326,6 +326,18 @@ describe("OpenAPI document", () => {
   it("lists every route the application has, and every route has an access rule", () => {
     const routes = discoverRoutes(api.app.get(DiscoveryService), api.app.get(Reflector));
     expect(routes.map((route) => route.name).sort()).toEqual([
+      "CarrierController.create",
+      "CarrierController.get",
+      "CarrierController.list",
+      "CarrierController.update",
+      "CustomerController.create",
+      "CustomerController.get",
+      "CustomerController.list",
+      "CustomerController.update",
+      "LocationController.create",
+      "LocationController.get",
+      "LocationController.list",
+      "LocationController.update",
       "MeController.me",
       "MembersController.list",
       "OpenApiController.document",
@@ -335,7 +347,7 @@ describe("OpenAPI document", () => {
     for (const route of routes) {
       expect(route.rule, route.name).toBeDefined();
       expect(
-        operation(route.path, route.httpMethod),
+        operation(route.path.replace(/:([A-Za-z]+)/g, "{$1}"), route.httpMethod),
         `${route.httpMethod} ${route.path}`,
       ).toBeDefined();
     }

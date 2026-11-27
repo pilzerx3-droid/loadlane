@@ -41,41 +41,35 @@ describe("role catalog", () => {
 
 describe("permission matrix", () => {
   // Written out on purpose, independent of ROLE_PERMISSIONS, so a wrong edit there is noticed.
-  const expected: Record<RoleKey, Record<Permission, boolean>> = {
-    admin: {
-      "organization:read": true,
-      "organization:manage": true,
-      "member:read": true,
-      "member:manage": true,
-      "audit:read": true,
-    },
-    dispatcher: {
-      "organization:read": true,
-      "organization:manage": false,
-      "member:read": true,
-      "member:manage": false,
-      "audit:read": false,
-    },
-    sales: {
-      "organization:read": true,
-      "organization:manage": false,
-      "member:read": true,
-      "member:manage": false,
-      "audit:read": false,
-    },
-    carrier_user: {
-      "organization:read": true,
-      "organization:manage": false,
-      "member:read": false,
-      "member:manage": false,
-      "audit:read": false,
-    },
+  // Each role gets exactly the permissions listed here and nothing else.
+  const granted: Record<RoleKey, Permission[]> = {
+    admin: [...PERMISSIONS],
+    dispatcher: [
+      "organization:read",
+      "member:read",
+      "customer:read",
+      "customer:manage",
+      "carrier:read",
+      "carrier:manage",
+      "location:read",
+      "location:manage",
+    ],
+    sales: [
+      "organization:read",
+      "member:read",
+      "customer:read",
+      "customer:manage",
+      "carrier:read",
+      "location:read",
+      "location:manage",
+    ],
+    carrier_user: ["organization:read"],
   };
 
   it.each(ROLES)("%s", (role) => {
     for (const permission of PERMISSIONS) {
       expect(permissionsForRoles([role]).has(permission), `${role} / ${permission}`).toBe(
-        expected[role][permission],
+        granted[role].includes(permission),
       );
     }
   });
