@@ -253,6 +253,86 @@ describe("organization switcher", () => {
   });
 });
 
+describe("own role assignments across organizations", () => {
+  // Fresh organizations, so the counts of the other tests stay as they are.
+  const orgC = randomUUID();
+  const orgD = randomUUID();
+  const userX = randomUUID();
+  const userY = randomUUID();
+
+  beforeAll(async () => {
+    await seedOrganization(orgC, userX, randomUUID(), "Organization C");
+    await seedOrganization(orgD, userY, randomUUID(), "Organization D");
+    // X is also a member of D, with the role sales.
+    await run({ organizationId: orgD, userId: userX }, async (c) => {
+      const inserted = await c.query<{ id: string }>(
+        "INSERT INTO membership (organization_id, user_id, status) VALUES ($1, $2, 'active') RETURNING id",
+        [orgD, userX],
+      );
+      await c.query(
+        "INSERT INTO membership_role (organization_id, membership_id, role_key) VALUES ($1, $2, 'sales')",
+        [orgD, inserted.rows[0]?.id],
+      );
+    });
+  });
+
+  async function roles(context: TenantContext): Promise<string[]> {
+    const result = await run(context, (c) =>
+      c.query<{ organization_id: string; role_key: string }>(
+        "SELECT organization_id, role_key FROM membership_role ORDER BY role_key, organization_id",
+      ),
+    );
+    return result.rows.map((row) => `${row.role_key}@${row.organization_id}`);
+  }
+
+  it("shows a person their own roles in every organization without a tenant", async () => {
+    expect(await roles({ userId: userX })).toEqual([`admin@${orgC}`, `sales@${orgD}`]);
+  });
+
+  it("does not show other people's roles to them, even in a shared organization", async () => {
+    expect(await roles({ userId: userY })).toEqual([`admin@${orgD}`]);
+  });
+
+  it("adds the tenant's roles to the person's own when the tenant is chosen", async () => {
+    // The two rules combine: everything of tenant D, plus X's own role in C. Code that reads
+    // membership_role under a tenant must therefore still filter by organization or membership.
+    expect(await roles({ organizationId: orgD, userId: userX })).toEqual([
+      `admin@${orgC}`,
+      `admin@${orgD}`,
+      `sales@${orgD}`,
+    ]);
+  });
+
+  it("shows a person without roles of their own only the tenant's", async () => {
+    const outsider = randomUUID();
+    await run({ userId: outsider }, (c) =>
+      c.query("INSERT INTO app_user (id, email, display_name) VALUES ($1, $2, 'Outsider')", [
+        outsider,
+        `${outsider}@example.com`,
+      ]),
+    );
+    // No membership in D: with D as tenant the person sees D's roles only if the application chose D,
+    // which it must not do for a non-member. The database alone does not stop that; the access guard does.
+    expect(await roles({ organizationId: orgD, userId: outsider })).toEqual([
+      `admin@${orgD}`,
+      `sales@${orgD}`,
+    ]);
+    expect(await roles({ userId: outsider })).toEqual([]);
+  });
+
+  it("gives no write access: roles can only be assigned inside the current tenant", async () => {
+    await expectPgError(
+      run({ userId: userX }, (c) =>
+        c.query(
+          "INSERT INTO membership_role (organization_id, membership_id, role_key) SELECT organization_id, id, 'dispatcher' FROM membership WHERE user_id = $1 AND organization_id = $2",
+          [userX, orgC],
+        ),
+      ),
+      "42501",
+    );
+  });
+});
+
 describe("app_user self-service", () => {
   it("lets a person change only their own row", async () => {
     const context = { organizationId: orgA, userId: userA };

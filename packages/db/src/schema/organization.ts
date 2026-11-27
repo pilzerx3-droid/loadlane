@@ -1,5 +1,16 @@
 import { sql } from "drizzle-orm";
-import { char, check, pgEnum, pgTable, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
+import {
+  char,
+  check,
+  index,
+  pgEnum,
+  pgTable,
+  text,
+  timestamp,
+  uniqueIndex,
+  uuid,
+} from "drizzle-orm/pg-core";
+import { appUser } from "./app-user.ts";
 import { createdAtColumn, idColumn, updatedAtColumn } from "./columns.ts";
 
 export const organizationRegionEnum = pgEnum("organization_region", ["us", "eu"]);
@@ -26,9 +37,12 @@ export const organization = pgTable(
     createdAt: createdAtColumn(),
     updatedAt: updatedAtColumn(),
     deletedAt: timestamp("deleted_at", { withTimezone: true, mode: "date" }),
+    /** Who created the organization through the API. Empty for organizations created in other ways. Used to limit self-service creation. */
+    createdByUserId: uuid("created_by_user_id").references(() => appUser.id),
   },
   (t) => [
     uniqueIndex("organization_slug_key").on(t.slug),
+    index("organization_created_by_idx").on(t.createdByUserId),
     check("organization_slug_format", sql`${t.slug} ~ '^[a-z0-9]+(-[a-z0-9]+)*$'`),
     check("organization_currency_format", sql`${t.currency} ~ '^[A-Z]{3}$'`),
   ],
