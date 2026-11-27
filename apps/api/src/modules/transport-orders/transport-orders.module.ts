@@ -1,5 +1,19 @@
 import { Module } from "@nestjs/common";
+import type pg from "pg";
+import { APP_POOL } from "../../platform/tokens.ts";
+import { TransportController } from "./transport.controller.ts";
+import { TransportService } from "./transport-service.ts";
+import { TRANSPORT_SERVICE } from "./tokens.ts";
 
-/** Transport orders. Planned for Phase 2 (transport management). Intentionally empty: no code until its phase starts. */
-@Module({})
+/** Transports with stops, status model and event history (ADR 0014). */
+@Module({
+  controllers: [TransportController],
+  providers: [
+    {
+      provide: TRANSPORT_SERVICE,
+      inject: [APP_POOL],
+      useFactory: (pool: pg.Pool) => new TransportService(pool),
+    },
+  ],
+})
 export class TransportOrdersModule {}

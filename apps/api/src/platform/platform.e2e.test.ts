@@ -343,6 +343,11 @@ describe("OpenAPI document", () => {
       "OpenApiController.document",
       "OrganizationController.create",
       "OrganizationController.get",
+      "TransportController.changeStatus",
+      "TransportController.create",
+      "TransportController.get",
+      "TransportController.list",
+      "TransportController.update",
     ]);
     for (const route of routes) {
       expect(route.rule, route.name).toBeDefined();
