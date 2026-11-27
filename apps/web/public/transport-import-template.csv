@@ -1,0 +1,2 @@
+customer,customer_reference,purchase_order,weight_lb,pieces,carrier,pickup_location,pickup_start,pickup_end,delivery_location,delivery_start,delivery_end,notes
+"Example Customer",SO-1001,PO-5001,42000,22,"Example Carrier","Example Warehouse",2026-12-01 14:00,2026-12-01 16:00,"Example Store",2026-12-02 08:00,2026-12-02 12:00,Call ahead

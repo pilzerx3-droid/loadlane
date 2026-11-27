@@ -10,6 +10,7 @@ import {
   type TransportFormValues,
 } from "../lib/transport-form";
 import { changeTransportStatus, saveTransport } from "../lib/transport-actions";
+import { importTransports, type ImportReport } from "../lib/transport-import";
 
 // Server actions for transports. Next.js checks that the request comes from this site; the API
 // checks the permission and the status model again for every call.
@@ -68,4 +69,32 @@ export async function changeStatusAction(id: string, formData: FormData): Promis
   );
   if (result === "signed_out") redirect("/");
   redirect(result === "done" ? `/transports/${id}` : `/transports/${id}?problem=${result}`);
+}
+
+export interface ImportState {
+  csv: string;
+  report?: ImportReport;
+  message?: string;
+}
+
+const IMPORT_MESSAGES = {
+  too_large:
+    "The file is empty or too large. Import at most 200 rows (about 90,000 characters) at a time.",
+  forbidden: "You do not have permission to import transports.",
+  unavailable: "Loadlane could not check the file right now. Please try again in a moment.",
+} as const;
+
+/** Checks the pasted or uploaded CSV, or imports it when the person pressed "Import". */
+export async function importTransportsAction(
+  _previous: ImportState | undefined,
+  formData: FormData,
+): Promise<ImportState> {
+  const text = formData.get("csv");
+  const csv = typeof text === "string" ? text : "";
+  const dryRun = formData.get("intent") !== "import";
+  const { deps, sessionId } = await currentSession();
+  const result = await importTransports(sessionId, csv, dryRun, deps);
+  if (result.status === "signed_out") redirect("/");
+  if (result.status === "ok") return { csv, report: result.report };
+  return { csv, message: IMPORT_MESSAGES[result.status] };
 }

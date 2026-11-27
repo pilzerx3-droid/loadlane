@@ -1,6 +1,6 @@
 import { Pencil, Plus } from "lucide-react";
 import { z } from "zod";
-import { Button, PageHeader } from "@loadlane/ui";
+import { Button, Card, PageHeader } from "@loadlane/ui";
 import { apiRequest } from "../lib/api-client";
 import { getAuthDeps } from "../lib/deps";
 import { parsePage } from "../lib/paging";
@@ -17,6 +17,7 @@ import { requireOrganizationPage, type ActiveViewer } from "../lib/viewer";
 import { AppShell } from "./app-shell";
 import { ForbiddenNotice, Notice } from "./notices";
 import { TransportForm, type Option } from "./transport-form";
+import { TransportImportForm } from "./transport-import-form";
 import { TransportDetailView, TransportStatusBadge, TransportsList } from "./transport-views";
 
 const PAGE_SIZE = 25;
@@ -96,11 +97,16 @@ export async function TransportsListPage({
         description={`Shipments of ${viewer.active.name}`}
         actions={
           allowed && canManage ? (
-            <Button asChild>
-              <a href="/transports/new">
-                <Plus aria-hidden="true" /> New transport
-              </a>
-            </Button>
+            <div className="flex gap-2">
+              <Button asChild variant="outline">
+                <a href="/transports/import">Import CSV</a>
+              </Button>
+              <Button asChild>
+                <a href="/transports/new">
+                  <Plus aria-hidden="true" /> New transport
+                </a>
+              </Button>
+            </div>
           ) : undefined
         }
       />
@@ -255,6 +261,49 @@ export async function TransportDetailPage({ id, problem }: { id: string; problem
         </div>
       ) : null}
       <TransportDetailView transport={transport} canManage={canManage} />
+    </AppShell>
+  );
+}
+
+/** The page to check and import a CSV file of transports. */
+export async function TransportImportPage() {
+  const { viewer, allowed } = await requireOrganizationPage("transport:manage");
+  return (
+    <AppShell viewer={viewer}>
+      <PageHeader
+        title="Import transports"
+        description="Create many transports from a CSV file"
+        actions={
+          <Button asChild variant="outline">
+            <a href="/transport-import-template.csv" download>
+              Download template
+            </a>
+          </Button>
+        }
+      />
+      {allowed ? (
+        <div className="space-y-5">
+          <Card className="p-5 text-sm">
+            <p>
+              One row per transport with a pickup and a delivery. Customers, carriers and locations
+              are matched by name against your active records; nothing is created for you. Required
+              columns: <code>customer</code>, <code>pickup_location</code>,{" "}
+              <code>pickup_start</code>, <code>pickup_end</code>, <code>delivery_location</code>,{" "}
+              <code>delivery_start</code>, <code>delivery_end</code>. Optional:{" "}
+              <code>customer_reference</code>, <code>purchase_order</code>, <code>weight_lb</code>,{" "}
+              <code>pieces</code>, <code>carrier</code>, <code>notes</code>.
+            </p>
+            <p className="mt-2 text-muted-foreground">
+              Times are local at each location, as <code>2026-12-01 14:30</code> or{" "}
+              <code>12/01/2026 2:30 PM</code>. A customer reference that already exists for the same
+              customer is reported as a duplicate. At most 200 rows at a time.
+            </p>
+          </Card>
+          <TransportImportForm />
+        </div>
+      ) : (
+        <ForbiddenNotice />
+      )}
     </AppShell>
   );
 }
