@@ -34,3 +34,9 @@ Thumbs.db
 
 # Claude Code local settings
 .claude/settings.local.json
+
+# Next.js
+next-env.d.ts
+
+# esbuild output of the API start-up smoke test
+dist-smoke/
