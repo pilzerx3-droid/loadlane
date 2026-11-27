@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { LoggerModule } from "nestjs-pino";
 import pino, { type DestinationStream } from "pino";
+import { traceFields } from "./telemetry.ts";
 import type { TenantRequest } from "./request-context.ts";
 
 export interface LogOptions {
@@ -35,6 +36,7 @@ export function loggerModule(options: LogOptions) {
       level: options.level,
       ...(options.stream ? { stream: options.stream } : {}),
       timestamp: pino.stdTimeFunctions.isoTime,
+      mixin: () => traceFields(),
       genReqId: (request: IncomingMessage, response: ServerResponse) => {
         const id = requestIdFor(request.headers["x-request-id"]);
         response.setHeader("X-Request-Id", id);

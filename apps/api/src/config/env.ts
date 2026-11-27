@@ -18,6 +18,8 @@ export interface ApiConfig {
   openApiEnabled: boolean;
   /** How many organizations one person may create through the API. */
   maxOrganizationsPerUser: number;
+  /** Where request traces go: nowhere (default), the console, or an OTLP/HTTP collector. */
+  tracesExporter: "none" | "console" | "otlp";
 }
 
 /** What the modules need at run time. Tests pass only the parts they use. */
@@ -43,6 +45,7 @@ const envSchema = z.object({
   RATE_LIMIT_PER_MINUTE: z.coerce.number().int().min(1).max(1_000_000).default(120),
   OPENAPI_ENABLED: z.enum(["true", "false"]).optional(),
   MAX_ORGANIZATIONS_PER_USER: z.coerce.number().int().min(1).max(1000).default(3),
+  OTEL_TRACES_EXPORTER: z.enum(["none", "console", "otlp"]).default("none"),
   NODE_ENV: z.string().optional(),
 });
 
@@ -68,6 +71,7 @@ export function loadApiConfig(env: Record<string, string | undefined>): ApiConfi
       ? values.OPENAPI_ENABLED === "true"
       : values.NODE_ENV !== "production",
     maxOrganizationsPerUser: values.MAX_ORGANIZATIONS_PER_USER,
+    tracesExporter: values.OTEL_TRACES_EXPORTER,
   };
 }
 

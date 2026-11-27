@@ -19,7 +19,15 @@ describe("loadApiConfig", () => {
       rateLimitPerMinute: 120,
       openApiEnabled: true,
       maxOrganizationsPerUser: 3,
+      tracesExporter: "none",
     });
+  });
+
+  it("reads the trace exporter and rejects an unknown one", () => {
+    expect(loadApiConfig({ ...valid, OTEL_TRACES_EXPORTER: "otlp" }).tracesExporter).toBe("otlp");
+    expect(() => loadApiConfig({ ...valid, OTEL_TRACES_EXPORTER: "zipkin" })).toThrow(
+      /OTEL_TRACES_EXPORTER/,
+    );
   });
 
   it("does not serve the OpenAPI document in production unless asked to", () => {
