@@ -1,16 +1,11 @@
 import {
   ConflictException,
   ForbiddenException,
-  Inject,
-  Injectable,
   Logger,
   ServiceUnavailableException,
   UnauthorizedException,
-  type CanActivate,
-  type ExecutionContext,
 } from "@nestjs/common";
 import type { Request, Response } from "express";
-import { TOKEN_VERIFIER, USER_RESOLVER } from "./tokens.ts";
 import {
   InvalidTokenError,
   ProviderUnavailableError,
@@ -24,7 +19,7 @@ import {
   type UserResolver,
 } from "./user-resolver.ts";
 
-/** Set on the request by AuthGuard. */
+/** Who is calling. Set on the request once the access token has been verified. */
 export interface AuthContext {
   user: ResolvedUser;
   issuer: string;
@@ -35,21 +30,16 @@ export type AuthenticatedRequest = Request & { auth?: AuthContext };
 
 const BEARER_PATTERN = /^Bearer ([A-Za-z0-9\-._~+/]+=*)$/i;
 
-/** Requires a valid access token and resolves it to one of our users. */
-@Injectable()
-export class AuthGuard implements CanActivate {
-  private readonly logger = new Logger(AuthGuard.name);
+/** Turns the Authorization header into one of our users, or throws the matching HTTP error. */
+export class Authenticator {
+  private readonly logger = new Logger(Authenticator.name);
 
   constructor(
-    @Inject(TOKEN_VERIFIER) private readonly verifier: TokenVerifier,
-    @Inject(USER_RESOLVER) private readonly resolver: UserResolver,
+    private readonly verifier: TokenVerifier,
+    private readonly resolver: UserResolver,
   ) {}
 
-  async canActivate(context: ExecutionContext): Promise<boolean> {
-    const http = context.switchToHttp();
-    const request = http.getRequest<AuthenticatedRequest>();
-    const response = http.getResponse<Response>();
-
+  async authenticate(request: AuthenticatedRequest, response: Response): Promise<AuthContext> {
     const accessToken = BEARER_PATTERN.exec(request.headers.authorization ?? "")?.[1];
     if (!accessToken) {
       response.setHeader("WWW-Authenticate", "Bearer");
@@ -59,8 +49,9 @@ export class AuthGuard implements CanActivate {
     try {
       const verified = await this.verifier.verify(accessToken);
       const user = await this.resolver.resolve(verified, accessToken);
-      request.auth = { user, issuer: verified.issuer, subject: verified.subject };
-      return true;
+      const auth: AuthContext = { user, issuer: verified.issuer, subject: verified.subject };
+      request.auth = auth;
+      return auth;
     } catch (error) {
       throw this.toHttpException(error, response);
     }

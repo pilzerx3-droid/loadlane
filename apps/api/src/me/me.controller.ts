@@ -1,8 +1,9 @@
-import { Controller, Get, Inject, Req, UnauthorizedException, UseGuards } from "@nestjs/common";
+import { Controller, Get, Inject, Req, UnauthorizedException } from "@nestjs/common";
 import { schema, withTenant } from "@loadlane/db";
 import { and, asc, eq, isNull } from "drizzle-orm";
 import type pg from "pg";
-import { AuthGuard, type AuthenticatedRequest } from "../auth/auth.guard.ts";
+import { AuthenticatedOnly } from "../access/access.ts";
+import type { AuthenticatedRequest } from "../auth/authenticator.ts";
 import { APP_POOL } from "../auth/tokens.ts";
 
 export interface MeResponse {
@@ -16,7 +17,7 @@ export class MeController {
   constructor(@Inject(APP_POOL) private readonly pool: pg.Pool) {}
 
   @Get("me")
-  @UseGuards(AuthGuard)
+  @AuthenticatedOnly()
   async me(@Req() request: AuthenticatedRequest): Promise<MeResponse> {
     const auth = request.auth;
     if (!auth) throw new UnauthorizedException();

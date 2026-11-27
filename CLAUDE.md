@@ -56,6 +56,8 @@ Tenant isolation (ADR 0002): application code reads and writes only through `wit
 
 Sign-in (ADR 0003): ZITADEL Cloud (US) through standard OIDC only, no vendor SDK. The API verifies JWT access tokens behind `TokenVerifier`; people are identified by (issuer, subject), never linked by e-mail. The web app keeps sessions server-side in Valkey. NestJS code uses explicit `@Inject(token)` because the toolchain does not emit decorator metadata. Packages under `packages/*` must have no side effects on import (the API bundles them).
 
+Permissions (ADR 0010): every API route declares `@AuthenticatedOnly()` or `@RequirePermissions(...)`; a route without one stops the app from starting. The organization of a request comes from the `X-Organization-Id` header. Roles and the role-to-permission map live in `packages/shared/src/permissions.ts`; a new permission is added together with its endpoint and a test of the role matrix in `apps/api/src/access/access.e2e.test.ts`. Read the caller's organization and roles with `requireTenant(request)`.
+
 Notes: TypeScript is pinned to 6.0.x until typescript-eslint supports 7.x. Tests in `packages/db`, `apps/api` and `apps/web` need the local stack running. Local stack uses Valkey (BSD-3) instead of Redis and SeaweedFS (Apache-2.0) instead of MinIO for license reasons.
 
 ## Current phase
