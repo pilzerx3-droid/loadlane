@@ -291,6 +291,9 @@ importers:
       ioredis:
         specifier: ^6.1.0
         version: 6.1.0
+      lucide-react:
+        specifier: ^1.81.0
+        version: 1.81.0(@types/react@19.3.3)(react@19.3.1)
       next:
         specifier: ^16.4.6
         version: 16.4.6(@types/node@26.6.11)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)

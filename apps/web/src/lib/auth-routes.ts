@@ -142,6 +142,9 @@ export async function loadSession(
       accessToken: refreshed.accessToken,
       accessTokenExpiresAt: refreshed.accessTokenExpiresAt,
       subject: session.subject,
+      ...(session.activeOrganizationId
+        ? { activeOrganizationId: session.activeOrganizationId }
+        : {}),
       ...(refreshed.refreshToken ? { refreshToken: refreshed.refreshToken } : {}),
       ...((refreshed.idToken ?? session.idToken)
         ? { idToken: refreshed.idToken ?? session.idToken }

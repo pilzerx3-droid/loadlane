@@ -11,6 +11,8 @@ if (existsSync(rootEnvFile)) process.loadEnvFile(rootEnvFile);
 const config: NextConfig = {
   poweredByHeader: false,
   serverExternalPackages: ["ioredis"],
+  // The UI package is shipped as TypeScript source.
+  transpilePackages: ["@loadlane/ui"],
   turbopack: { root: repositoryRoot },
   headers() {
     return Promise.resolve([

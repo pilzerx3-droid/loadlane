@@ -10,6 +10,8 @@ export interface SessionData {
   refreshToken?: string | undefined;
   idToken?: string | undefined;
   subject: string;
+  /** The organization the person is working in. Must be one they belong to; checked again on every page. */
+  activeOrganizationId?: string | undefined;
 }
 
 /** What has to be remembered between redirecting to the provider and its callback. */
@@ -36,6 +38,7 @@ const sessionSchema = z.object({
   refreshToken: z.string().min(1).optional(),
   idToken: z.string().min(1).optional(),
   subject: z.string().min(1),
+  activeOrganizationId: z.uuid().optional(),
 });
 
 const pendingSchema = z.object({
@@ -121,5 +124,8 @@ function stripUndefined(data: z.infer<typeof sessionSchema>): SessionData {
     subject: data.subject,
     ...(data.refreshToken === undefined ? {} : { refreshToken: data.refreshToken }),
     ...(data.idToken === undefined ? {} : { idToken: data.idToken }),
+    ...(data.activeOrganizationId === undefined
+      ? {}
+      : { activeOrganizationId: data.activeOrganizationId }),
   };
 }
