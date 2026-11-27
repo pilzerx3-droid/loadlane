@@ -116,7 +116,7 @@ export async function apiRequest<S extends z.ZodType>(options: {
   organizationId?: string;
   json?: unknown;
   /** Default: GET, or POST when `json` is given. */
-  method?: "GET" | "POST" | "PATCH";
+  method?: "GET" | "POST" | "PATCH" | "DELETE";
   fetchFn?: typeof fetch;
 }): Promise<ApiResult<z.output<S>>> {
   const fetchFn = options.fetchFn ?? fetch;

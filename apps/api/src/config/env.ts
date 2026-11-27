@@ -20,6 +20,14 @@ export interface ApiConfig {
   maxOrganizationsPerUser: number;
   /** Where request traces go: nowhere (default), the console, or an OTLP/HTTP collector. */
   tracesExporter: "none" | "console" | "otlp";
+  /** S3-compatible file storage. Left out when S3_ENDPOINT is not set; document uploads then answer 503. */
+  s3?: {
+    endpoint: string;
+    region: string;
+    accessKeyId: string;
+    secretAccessKey: string;
+    bucket: string;
+  };
 }
 
 /** What the modules need at run time. Tests pass only the parts they use. */
@@ -45,6 +53,11 @@ const envSchema = z.object({
   RATE_LIMIT_PER_MINUTE: z.coerce.number().int().min(1).max(1_000_000).default(120),
   OPENAPI_ENABLED: z.enum(["true", "false"]).optional(),
   MAX_ORGANIZATIONS_PER_USER: z.coerce.number().int().min(1).max(1000).default(3),
+  S3_ENDPOINT: z.url().optional(),
+  S3_REGION: z.string().min(1).default("us-east-1"),
+  S3_ACCESS_KEY_ID: z.string().min(1).optional(),
+  S3_SECRET_ACCESS_KEY: z.string().min(1).optional(),
+  S3_BUCKET: z.string().min(3).max(63).default("loadlane-documents"),
   OTEL_TRACES_EXPORTER: z.enum(["none", "console", "otlp"]).default("none"),
   NODE_ENV: z.string().optional(),
 });
@@ -72,6 +85,7 @@ export function loadApiConfig(env: Record<string, string | undefined>): ApiConfi
       : values.NODE_ENV !== "production",
     maxOrganizationsPerUser: values.MAX_ORGANIZATIONS_PER_USER,
     tracesExporter: values.OTEL_TRACES_EXPORTER,
+    ...s3Settings(values),
   };
 }
 
@@ -88,4 +102,23 @@ export function loadEnvFileIfPresent(startDirectory: string = process.cwd()): vo
     if (parent === directory) return;
     directory = parent;
   }
+}
+
+/** Storage settings are all or nothing: an endpoint without keys is a mistake worth stopping for. */
+function s3Settings(values: z.infer<typeof envSchema>): Pick<ApiConfig, "s3"> {
+  if (values.S3_ENDPOINT === undefined) return {};
+  if (values.S3_ACCESS_KEY_ID === undefined || values.S3_SECRET_ACCESS_KEY === undefined) {
+    throw new Error(
+      "Invalid API configuration (see .env.example):\n  S3_ACCESS_KEY_ID and S3_SECRET_ACCESS_KEY are required when S3_ENDPOINT is set",
+    );
+  }
+  return {
+    s3: {
+      endpoint: values.S3_ENDPOINT,
+      region: values.S3_REGION,
+      accessKeyId: values.S3_ACCESS_KEY_ID,
+      secretAccessKey: values.S3_SECRET_ACCESS_KEY,
+      bucket: values.S3_BUCKET,
+    },
+  };
 }

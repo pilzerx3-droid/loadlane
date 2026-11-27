@@ -3,6 +3,7 @@ import { z } from "zod";
 import { Button, Card, PageHeader } from "@loadlane/ui";
 import { apiRequest } from "../lib/api-client";
 import { getAuthDeps } from "../lib/deps";
+import { documentListSchema } from "../lib/documents";
 import { parsePage } from "../lib/paging";
 import { isoToLocalInput } from "@loadlane/shared";
 import {
@@ -15,6 +16,7 @@ import {
 import { emptyTransportForm, type TransportFormValues } from "../lib/transport-form";
 import { requireOrganizationPage, type ActiveViewer } from "../lib/viewer";
 import { AppShell } from "./app-shell";
+import { DocumentsCard } from "./documents-card";
 import { ForbiddenNotice, Notice } from "./notices";
 import { TransportForm, type Option } from "./transport-form";
 import { TransportImportForm } from "./transport-import-form";
@@ -46,6 +48,14 @@ const PROBLEMS: Record<string, string> = {
   forbidden: "You do not have permission to change this transport.",
   not_found: "This transport no longer exists.",
   unavailable: "The status could not be changed right now. Please try again in a moment.",
+  document_missing: "Choose a file to upload.",
+  document_unsupported: "Only PDF, JPEG, PNG, WebP and HEIC files can be uploaded.",
+  document_too_large: "That file is larger than 10 MB.",
+  document_storage_unavailable:
+    "File storage is not set up on this server, so nothing can be uploaded yet.",
+  document_forbidden: "You do not have permission to change documents.",
+  document_not_found: "That document or transport no longer exists.",
+  document_unavailable: "The document could not be saved right now. Please try again in a moment.",
 };
 
 export async function TransportsListPage({
@@ -240,6 +250,10 @@ export async function TransportDetailPage({ id, problem }: { id: string; problem
     );
   }
   const transport = result.data;
+  const canReadDocuments = viewer.active.permissions.includes("document:read");
+  const documents = canReadDocuments
+    ? await call(viewer, `/v1/transports/${id}/documents`, documentListSchema)
+    : undefined;
   return (
     <AppShell viewer={viewer}>
       <PageHeader
@@ -261,6 +275,20 @@ export async function TransportDetailPage({ id, problem }: { id: string; problem
         </div>
       ) : null}
       <TransportDetailView transport={transport} canManage={canManage} />
+      {documents?.ok ? (
+        <div className="mt-5">
+          <DocumentsCard
+            transportId={transport.id}
+            documents={documents.data.items}
+            canManage={viewer.active.permissions.includes("document:manage")}
+            timeZone={transport.stops[0]?.location.timezone ?? "UTC"}
+          />
+        </div>
+      ) : documents ? (
+        <div className="mt-5">
+          <Notice>The documents could not be loaded right now.</Notice>
+        </div>
+      ) : null}
     </AppShell>
   );
 }

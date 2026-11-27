@@ -55,6 +55,8 @@ describe("permission matrix", () => {
       "location:manage",
       "transport:read",
       "transport:manage",
+      "document:read",
+      "document:manage",
     ],
     sales: [
       "organization:read",
@@ -65,6 +67,7 @@ describe("permission matrix", () => {
       "location:read",
       "location:manage",
       "transport:read",
+      "document:read",
     ],
     carrier_user: ["organization:read"],
   };

@@ -6,7 +6,8 @@ import { AccessDeclarationCheck } from "./access-declaration-check.ts";
 import { loggerModule, type LogOptions } from "./logging.ts";
 import { OpenApiController, OpenApiService } from "./openapi.ts";
 import { ProblemFilter } from "./problem.ts";
-import { API_CONFIG, APP_POOL } from "./tokens.ts";
+import type { ObjectStorage } from "./object-storage.ts";
+import { API_CONFIG, APP_POOL, OBJECT_STORAGE } from "./tokens.ts";
 
 export interface PlatformOptions {
   config: RuntimeConfig;
@@ -14,6 +15,7 @@ export interface PlatformOptions {
   pool: pg.Pool;
   openApiEnabled: boolean;
   log: LogOptions;
+  storage: ObjectStorage;
 }
 
 /**
@@ -31,11 +33,17 @@ export class PlatformModule {
       providers: [
         { provide: APP_POOL, useValue: options.pool },
         { provide: API_CONFIG, useValue: options.config },
+        { provide: OBJECT_STORAGE, useValue: options.storage },
         { provide: APP_FILTER, useClass: ProblemFilter },
         AccessDeclarationCheck,
         ...(options.openApiEnabled ? [OpenApiService] : []),
       ],
-      exports: [APP_POOL, API_CONFIG, ...(options.openApiEnabled ? [OpenApiService] : [])],
+      exports: [
+        APP_POOL,
+        API_CONFIG,
+        OBJECT_STORAGE,
+        ...(options.openApiEnabled ? [OpenApiService] : []),
+      ],
     };
   }
 }

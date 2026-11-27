@@ -9,6 +9,7 @@ import { OrganizationsModule } from "./modules/organizations/index.ts";
 import { PLANNED_MODULES } from "./modules/planned-modules.ts";
 import { AccessGuard, UsersPermissionsModule } from "./modules/users-permissions/index.ts";
 import type { LogOptions } from "./platform/logging.ts";
+import { UnconfiguredObjectStorage, type ObjectStorage } from "./platform/object-storage.ts";
 import { PlatformModule } from "./platform/platform.module.ts";
 import { RateLimitGuard } from "./platform/rate-limit.ts";
 
@@ -24,6 +25,8 @@ export interface AppModuleOptions {
   openApiEnabled?: boolean;
   /** Default: level info, standard output. */
   log?: LogOptions;
+  /** Default: storage that answers 503. */
+  storage?: ObjectStorage;
 }
 
 export function withDefaults(options: AppModuleOptions) {
@@ -32,6 +35,7 @@ export function withDefaults(options: AppModuleOptions) {
     rateLimit: options.rateLimit ?? { limit: 120, windowMs: 60_000 },
     openApiEnabled: options.openApiEnabled ?? true,
     log: options.log ?? { level: "info" },
+    storage: options.storage ?? new UnconfiguredObjectStorage(),
   };
 }
 
@@ -51,6 +55,7 @@ export class AppModule {
           pool: options.pool,
           openApiEnabled: options.openApiEnabled,
           log: options.log,
+          storage: options.storage,
         }),
         ThrottlerModule.forRoot({
           throttlers: [
