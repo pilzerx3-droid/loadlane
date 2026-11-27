@@ -64,6 +64,8 @@ Transports (ADR 0014): master data (customers, carriers, locations) and transpor
 
 Web shell (ADR 0012): navigation lists only pages that exist and filters by permission (`apps/web/src/lib/navigation.ts`); the active organization is stored in the server session; people create their own organization at `/onboarding` (limit `MAX_ORGANIZATIONS_PER_USER`). UI components live in `packages/ui` with tokens from `docs/reference/prototype`. Fonts are self-hosted; never add a Google Fonts link.
 
+Driver Link (ADR 0015): drivers use a capability link (/d/<token> in the web app, X-Driver-Token header on /v1/driver/*); only the SHA-256 hash of the token is stored, and the API resolves it with withTenant({ driverTokenHash }). No position is accepted without recorded consent (consent_required); positions are append-only events plus last_position; age and plausibility rules live in packages/shared/src/position.ts and the consent text in driver-consent.ts (change the wording = raise CONSENT_TEXT_VERSION). Never put a driver token in a log, audit entry or URL we call.
+
 Notes: TypeScript is pinned to 6.0.x until typescript-eslint supports 7.x. Tests in `packages/db`, `apps/api` and `apps/web` need the local stack running. Local stack uses Valkey (BSD-3) instead of Redis and SeaweedFS (Apache-2.0) instead of MinIO for license reasons.
 
 ## Current phase
