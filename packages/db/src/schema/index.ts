@@ -3,3 +3,4 @@ export * from "./app-user.ts";
 export * from "./role.ts";
 export * from "./membership.ts";
 export * from "./audit-log.ts";
+export * from "./directory.ts";

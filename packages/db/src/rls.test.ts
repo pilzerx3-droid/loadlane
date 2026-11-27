@@ -16,7 +16,14 @@ const membershipA = randomUUID();
 const membershipB = randomUUID();
 
 /** Tables whose rows carry an organization_id. */
-const TENANT_TABLES = ["membership", "membership_role", "audit_log"] as const;
+const TENANT_TABLES = [
+  "membership",
+  "membership_role",
+  "audit_log",
+  "customer",
+  "carrier",
+  "location",
+] as const;
 
 /** Tables in schema public that deliberately have no row-level security. */
 const TABLES_WITHOUT_RLS = new Set([
@@ -64,6 +71,16 @@ async function seedOrganization(
     await c.query(
       "INSERT INTO audit_log (organization_id, actor_type, actor_user_id, action) VALUES ($1, 'user', $2, 'organization.created')",
       [organizationId, adminUserId],
+    );
+    await c.query("INSERT INTO customer (organization_id, name) VALUES ($1, 'Customer')", [
+      organizationId,
+    ]);
+    await c.query("INSERT INTO carrier (organization_id, name) VALUES ($1, 'Carrier')", [
+      organizationId,
+    ]);
+    await c.query(
+      "INSERT INTO location (organization_id, name, address_line1, city, state, postal_code, timezone) VALUES ($1, 'Dock', '1 Main St', 'Dallas', 'TX', '75001', 'America/Chicago')",
+      [organizationId],
     );
   });
 }
@@ -152,6 +169,13 @@ describe("tenant isolation", () => {
         "INSERT INTO organization (id, name, slug, timezone) VALUES ($1, 'Intruder', 'intruder', 'UTC')",
         [stranger],
       ],
+      ["customer", "INSERT INTO customer (organization_id, name) VALUES ($1, 'Forged')", [orgB]],
+      ["carrier", "INSERT INTO carrier (organization_id, name) VALUES ($1, 'Forged')", [orgB]],
+      [
+        "location",
+        "INSERT INTO location (organization_id, name, address_line1, city, state, postal_code, timezone) VALUES ($1, 'Forged', '1 St', 'X', 'TX', '1', 'UTC')",
+        [orgB],
+      ],
     ];
     for (const [table, sql, params] of attempts) {
       await expectPgError(
@@ -177,8 +201,11 @@ describe("tenant isolation", () => {
         c.query("UPDATE organization SET name = 'hacked' WHERE id = $1", [orgB]),
         c.query("UPDATE membership SET status = 'removed' WHERE organization_id = $1", [orgB]),
         c.query("DELETE FROM membership_role WHERE organization_id = $1", [orgB]),
+        c.query("UPDATE customer SET name = 'hacked' WHERE organization_id = $1", [orgB]),
+        c.query("UPDATE carrier SET name = 'hacked' WHERE organization_id = $1", [orgB]),
+        c.query("UPDATE location SET name = 'hacked' WHERE organization_id = $1", [orgB]),
       ]);
-      expect(updates.map((result) => result.rowCount)).toEqual([0, 0, 0]);
+      expect(updates.map((result) => result.rowCount)).toEqual([0, 0, 0, 0, 0, 0]);
     });
 
     // Organization B is untouched.
@@ -199,6 +226,9 @@ describe("tenant isolation", () => {
       "membership",
       "membership_role",
       "audit_log",
+      "customer",
+      "carrier",
+      "location",
     ]) {
       expect(await count({}, `FROM ${table}`), table).toBe(0);
     }
@@ -282,11 +312,12 @@ describe("own role assignments across organizations", () => {
         "SELECT organization_id, role_key FROM membership_role ORDER BY role_key, organization_id",
       ),
     );
-    return result.rows.map((row) => `${row.role_key}@${row.organization_id}`);
+    // Sorted here: the organization ids are random, so the database order of equal roles is not stable.
+    return result.rows.map((row) => `${row.role_key}@${row.organization_id}`).sort();
   }
 
   it("shows a person their own roles in every organization without a tenant", async () => {
-    expect(await roles({ userId: userX })).toEqual([`admin@${orgC}`, `sales@${orgD}`]);
+    expect(await roles({ userId: userX })).toEqual([`admin@${orgC}`, `sales@${orgD}`].sort());
   });
 
   it("does not show other people's roles to them, even in a shared organization", async () => {
@@ -296,11 +327,9 @@ describe("own role assignments across organizations", () => {
   it("adds the tenant's roles to the person's own when the tenant is chosen", async () => {
     // The two rules combine: everything of tenant D, plus X's own role in C. Code that reads
     // membership_role under a tenant must therefore still filter by organization or membership.
-    expect(await roles({ organizationId: orgD, userId: userX })).toEqual([
-      `admin@${orgC}`,
-      `admin@${orgD}`,
-      `sales@${orgD}`,
-    ]);
+    expect(await roles({ organizationId: orgD, userId: userX })).toEqual(
+      [`admin@${orgC}`, `admin@${orgD}`, `sales@${orgD}`].sort(),
+    );
   });
 
   it("shows a person without roles of their own only the tenant's", async () => {
@@ -313,10 +342,9 @@ describe("own role assignments across organizations", () => {
     );
     // No membership in D: with D as tenant the person sees D's roles only if the application chose D,
     // which it must not do for a non-member. The database alone does not stop that; the access guard does.
-    expect(await roles({ organizationId: orgD, userId: outsider })).toEqual([
-      `admin@${orgD}`,
-      `sales@${orgD}`,
-    ]);
+    expect(await roles({ organizationId: orgD, userId: outsider })).toEqual(
+      [`admin@${orgD}`, `sales@${orgD}`].sort(),
+    );
     expect(await roles({ userId: outsider })).toEqual([]);
   });
 

@@ -36,6 +36,13 @@
       "when": 1795794331553,
       "tag": "0004_organization_creator",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1795797050738,
+      "tag": "0005_directory",
+      "breakpoints": true
     }
   ]
 }
