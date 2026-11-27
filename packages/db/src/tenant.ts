@@ -10,6 +10,12 @@ export interface TenantContext {
   organizationId?: string;
   /** The signed-in person. Used for the organization switcher and for self-service on app_user. */
   userId?: string;
+  /**
+   * Sign-in identity from a verified token. Lets the API look up or register the person before
+   * their user id is known (migration 0003). Set it only from a token that has been verified.
+   */
+  authIssuer?: string;
+  authSubject?: string;
 }
 
 export interface TenantSession {
@@ -23,6 +29,13 @@ const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{
 function assertUuid(name: string, value: string | undefined): string {
   if (value === undefined) return "";
   if (!UUID_PATTERN.test(value)) throw new TypeError(`${name} must be a UUID`);
+  return value;
+}
+
+function assertText(name: string, value: string | undefined): string {
+  if (value === undefined) return "";
+  if (value.length === 0 || value.length > 2048)
+    throw new TypeError(`${name} must be 1 to 2048 characters`);
   return value;
 }
 
@@ -46,14 +59,17 @@ export async function withTenant<T>(
 ): Promise<T> {
   const organizationId = assertUuid("organizationId", context.organizationId);
   const userId = assertUuid("userId", context.userId);
+  const authIssuer = assertText("authIssuer", context.authIssuer);
+  const authSubject = assertText("authSubject", context.authSubject);
 
   const client = await pool.connect();
   let brokenConnection: Error | undefined;
   try {
     await client.query("BEGIN");
     await client.query(
-      "SELECT set_config('app.organization_id', $1, true), set_config('app.user_id', $2, true)",
-      [organizationId, userId],
+      `SELECT set_config('app.organization_id', $1, true), set_config('app.user_id', $2, true),
+              set_config('app.auth_issuer', $3, true), set_config('app.auth_subject', $4, true)`,
+      [organizationId, userId, authIssuer, authSubject],
     );
     const result = await fn({ db: drizzle({ client, schema }), client });
     await client.query("COMMIT");

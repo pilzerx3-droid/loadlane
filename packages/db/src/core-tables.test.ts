@@ -151,7 +151,7 @@ describe("app_user", () => {
   it("requires issuer and subject of the login identity together", async () => {
     const id = randomUUID();
     await expectPgError(
-      run({ userId: id }, (c) =>
+      run({ userId: id, authIssuer: "https://issuer.example" }, (c) =>
         c.query(
           "INSERT INTO app_user (id, email, display_name, auth_issuer) VALUES ($1, $2, 'x', 'https://issuer.example')",
           [id, `${id}@example.com`],
@@ -164,7 +164,7 @@ describe("app_user", () => {
   it("rejects the same login identity on two users", async () => {
     const subject = randomUUID();
     const insert = (id: string) =>
-      run({ userId: id }, (c) =>
+      run({ userId: id, authIssuer: "https://issuer.example", authSubject: subject }, (c) =>
         c.query(
           "INSERT INTO app_user (id, email, display_name, auth_issuer, auth_subject) VALUES ($1, $2, 'x', 'https://issuer.example', $3)",
           [id, `${id}@example.com`, subject],
