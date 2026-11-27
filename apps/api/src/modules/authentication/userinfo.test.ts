@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { startFakeIssuer, type FakeIssuer } from "../testing/fake-issuer.ts";
+import { startFakeIssuer, type FakeIssuer } from "../../testing/fake-issuer.ts";
 import { OidcDiscovery } from "./oidc-discovery.ts";
 import { ProviderUnavailableError } from "./token-verifier.ts";
 import { OidcUserInfoClient } from "./userinfo.ts";

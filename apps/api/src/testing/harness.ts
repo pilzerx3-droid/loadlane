@@ -6,8 +6,8 @@ import { randomUUID } from "node:crypto";
 import { withTenant } from "@loadlane/db";
 import { createTestDatabase, type TestDatabase } from "@loadlane/db/testing";
 import type { INestApplication } from "@nestjs/common";
-import { NestFactory } from "@nestjs/core";
-import { AppModule } from "../app.module.ts";
+import type { AppModuleOptions } from "../app.module.ts";
+import { createApp } from "../create-app.ts";
 import { startFakeIssuer, type FakeIssuer } from "./fake-issuer.ts";
 
 export interface Person {
@@ -24,6 +24,7 @@ export interface SeedMember {
 }
 
 export interface TestApi {
+  app: INestApplication;
   baseUrl: string;
   issuer: FakeIssuer;
   db: TestDatabase;
@@ -44,17 +45,23 @@ export interface TestApi {
   close(): Promise<void>;
 }
 
-export async function startTestApi(): Promise<TestApi> {
+/**
+ * Starts the application against a fresh database and the fake issuer. The rate limit is high and
+ * logging is off by default; tests that look at those pass their own settings.
+ */
+export async function startTestApi(
+  overrides: Partial<Omit<AppModuleOptions, "config" | "pool">> = {},
+): Promise<TestApi> {
   const db = await createTestDatabase();
   const issuer = await startFakeIssuer("project-123");
-  const app: INestApplication = await NestFactory.create(
-    AppModule.forRoot({
-      config: { oidcIssuer: issuer.issuer, oidcAudience: issuer.audience },
-      pool: db.appPool,
-      jwksCooldownMs: 0,
-    }),
-    { logger: false },
-  );
+  const app: INestApplication = await createApp({
+    config: { oidcIssuer: issuer.issuer, oidcAudience: issuer.audience },
+    pool: db.appPool,
+    jwksCooldownMs: 0,
+    rateLimit: { limit: 1_000_000, windowMs: 60_000 },
+    log: { level: "silent" },
+    ...overrides,
+  });
   await app.listen(0, "127.0.0.1");
   const baseUrl = await app.getUrl();
 
@@ -66,6 +73,7 @@ export async function startTestApi(): Promise<TestApi> {
   };
 
   return {
+    app,
     baseUrl,
     issuer,
     db,

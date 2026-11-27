@@ -8,14 +8,35 @@ const valid = {
 };
 
 describe("loadApiConfig", () => {
-  it("applies defaults for host and port", () => {
+  it("applies the defaults", () => {
     expect(loadApiConfig(valid)).toEqual({
       host: "127.0.0.1",
       port: 4000,
       databaseUrl: valid.APP_DATABASE_URL,
       oidcIssuer: valid.OIDC_ISSUER,
       oidcAudience: "project-1",
+      logLevel: "info",
+      rateLimitPerMinute: 120,
+      openApiEnabled: true,
     });
+  });
+
+  it("does not serve the OpenAPI document in production unless asked to", () => {
+    expect(loadApiConfig({ ...valid, NODE_ENV: "production" }).openApiEnabled).toBe(false);
+    expect(
+      loadApiConfig({ ...valid, NODE_ENV: "production", OPENAPI_ENABLED: "true" }).openApiEnabled,
+    ).toBe(true);
+    expect(loadApiConfig({ ...valid, OPENAPI_ENABLED: "false" }).openApiEnabled).toBe(false);
+  });
+
+  it("reads log level and rate limit and rejects nonsense", () => {
+    expect(
+      loadApiConfig({ ...valid, LOG_LEVEL: "debug", RATE_LIMIT_PER_MINUTE: "30" }),
+    ).toMatchObject({ logLevel: "debug", rateLimitPerMinute: 30 });
+    expect(() => loadApiConfig({ ...valid, LOG_LEVEL: "loud" })).toThrow(/LOG_LEVEL/);
+    expect(() => loadApiConfig({ ...valid, RATE_LIMIT_PER_MINUTE: "0" })).toThrow(
+      /RATE_LIMIT_PER_MINUTE/,
+    );
   });
 
   it("reads host and port", () => {

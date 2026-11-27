@@ -2,7 +2,7 @@
 import { randomUUID } from "node:crypto";
 import { ROLES } from "@loadlane/shared";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { startTestApi, type TestApi } from "../testing/harness.ts";
+import { startTestApi, type TestApi } from "../../testing/harness.ts";
 
 let api: TestApi;
 
@@ -160,7 +160,11 @@ describe("organizations stay apart", () => {
 
     expect(unknown.status).toBe(403);
     expect(foreign.status).toBe(403);
-    expect(await body(foreign)).toEqual(await body(unknown));
+    // Identical except for the request id, which is different for every request.
+    const { requestId: foreignId, ...foreignProblem } = await body(foreign);
+    const { requestId: unknownId, ...unknownProblem } = await body(unknown);
+    expect(foreignProblem).toEqual(unknownProblem);
+    expect(foreignId).not.toBe(unknownId);
   });
 
   it("applies a role only in the organization where it is held", async () => {

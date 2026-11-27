@@ -10,10 +10,11 @@ import {
 import { Reflector } from "@nestjs/core";
 import { permissionsForRoles } from "@loadlane/shared";
 import type { Response } from "express";
-import type { Authenticator } from "../auth/authenticator.ts";
-import { AUTHENTICATOR, MEMBERSHIP_ACCESS } from "../auth/tokens.ts";
-import { ACCESS_KEY, ORGANIZATION_HEADER, type AccessRule, type TenantRequest } from "./access.ts";
+import { ACCESS_KEY, ORGANIZATION_HEADER, type AccessRule } from "../../platform/access.ts";
+import type { TenantRequest } from "../../platform/request-context.ts";
+import { AUTHENTICATOR, type Authenticator } from "../authentication/index.ts";
 import type { MembershipAccess } from "./membership-access.ts";
+import { MEMBERSHIP_ACCESS } from "./tokens.ts";
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
@@ -66,10 +67,11 @@ export class AccessGuard implements CanActivate {
     ]);
     if (!rule) {
       this.logger.error(
-        `Refused ${context.getClass().name}.${context.getHandler().name}: no @AuthenticatedOnly() or @RequirePermissions()`,
+        `Refused ${context.getClass().name}.${context.getHandler().name}: no @Public(), @AuthenticatedOnly() or @RequirePermissions()`,
       );
       throw forbidden("access_not_declared", "This endpoint has no access rule and is refused");
     }
+    if (rule.kind === "public") return true;
 
     const http = context.switchToHttp();
     const request = http.getRequest<TenantRequest>();

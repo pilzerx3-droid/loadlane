@@ -1,19 +1,15 @@
 import { Module, type DynamicModule } from "@nestjs/common";
-import { APP_GUARD, DiscoveryModule } from "@nestjs/core";
+import { APP_GUARD } from "@nestjs/core";
+import { ThrottlerModule } from "@nestjs/throttler";
 import type pg from "pg";
-import { AccessDeclarationCheck } from "./access/access-declaration-check.ts";
-import { AccessGuard } from "./access/access.guard.ts";
-import { MembershipAccess } from "./access/membership-access.ts";
-import { Authenticator } from "./auth/authenticator.ts";
-import { JoseTokenVerifier } from "./auth/jose-token-verifier.ts";
-import { OidcDiscovery } from "./auth/oidc-discovery.ts";
-import { APP_POOL, AUTHENTICATOR, MEMBERSHIP_ACCESS } from "./auth/tokens.ts";
-import { UserResolver } from "./auth/user-resolver.ts";
-import { OidcUserInfoClient } from "./auth/userinfo.ts";
 import type { ApiConfig } from "./config/env.ts";
-import { MeController } from "./me/me.controller.ts";
-import { MembersController } from "./members/members.controller.ts";
-import { OrganizationController } from "./organization/organization.controller.ts";
+import { AuthenticationModule } from "./modules/authentication/index.ts";
+import { OrganizationsModule } from "./modules/organizations/index.ts";
+import { PLANNED_MODULES } from "./modules/planned-modules.ts";
+import { AccessGuard, UsersPermissionsModule } from "./modules/users-permissions/index.ts";
+import type { LogOptions } from "./platform/logging.ts";
+import { PlatformModule } from "./platform/platform.module.ts";
+import { RateLimitGuard } from "./platform/rate-limit.ts";
 
 export interface AppModuleOptions {
   config: Pick<ApiConfig, "oidcIssuer" | "oidcAudience">;
@@ -21,32 +17,56 @@ export interface AppModuleOptions {
   pool: pg.Pool;
   /** Tests shorten the wait before keys are refetched after a key rotation. */
   jwksCooldownMs?: number;
+  /** Default: 120 requests per client address and minute. */
+  rateLimit?: { limit: number; windowMs: number };
+  /** Default: on. Whether GET /v1/openapi.json is served. */
+  openApiEnabled?: boolean;
+  /** Default: level info, standard output. */
+  log?: LogOptions;
 }
 
+export function withDefaults(options: AppModuleOptions) {
+  return {
+    ...options,
+    rateLimit: options.rateLimit ?? { limit: 120, windowMs: 60_000 },
+    openApiEnabled: options.openApiEnabled ?? true,
+    log: options.log ?? { level: "info" },
+  };
+}
+
+/**
+ * Composition root. The order of the global guards matters and is decided here: the rate limit comes
+ * first (so that requests with invalid tokens are limited too), the access check second.
+ */
 @Module({})
 export class AppModule {
-  static forRoot(options: AppModuleOptions): DynamicModule {
-    const { config, pool } = options;
-    const discovery = new OidcDiscovery(config.oidcIssuer);
-    const verifier = new JoseTokenVerifier({
-      issuer: config.oidcIssuer,
-      audience: config.oidcAudience,
-      discovery,
-      ...(options.jwksCooldownMs === undefined ? {} : { jwksCooldownMs: options.jwksCooldownMs }),
-    });
-    const resolver = new UserResolver(pool, new OidcUserInfoClient(discovery));
-
+  static forRoot(input: AppModuleOptions): DynamicModule {
+    const options = withDefaults(input);
     return {
       module: AppModule,
-      imports: [DiscoveryModule],
-      controllers: [MeController, OrganizationController, MembersController],
+      imports: [
+        PlatformModule.forRoot({
+          config: options.config,
+          pool: options.pool,
+          openApiEnabled: options.openApiEnabled,
+          log: options.log,
+        }),
+        ThrottlerModule.forRoot({
+          throttlers: [
+            { name: "default", ttl: options.rateLimit.windowMs, limit: options.rateLimit.limit },
+          ],
+          errorMessage: "Too many requests. Please slow down and retry later.",
+        }),
+        AuthenticationModule.register(
+          options.jwksCooldownMs === undefined ? {} : { jwksCooldownMs: options.jwksCooldownMs },
+        ),
+        UsersPermissionsModule,
+        OrganizationsModule,
+        ...PLANNED_MODULES,
+      ],
       providers: [
-        { provide: APP_POOL, useValue: pool },
-        { provide: AUTHENTICATOR, useValue: new Authenticator(verifier, resolver) },
-        { provide: MEMBERSHIP_ACCESS, useValue: new MembershipAccess(pool) },
-        // Every route passes through AccessGuard; routes without an access rule are refused.
+        { provide: APP_GUARD, useClass: RateLimitGuard },
         { provide: APP_GUARD, useClass: AccessGuard },
-        AccessDeclarationCheck,
       ],
     };
   }

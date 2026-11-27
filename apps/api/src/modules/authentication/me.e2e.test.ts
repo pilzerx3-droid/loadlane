@@ -5,11 +5,10 @@ import "reflect-metadata";
 import { randomUUID } from "node:crypto";
 import { withTenant } from "@loadlane/db";
 import { createTestDatabase, type TestDatabase } from "@loadlane/db/testing";
-import { NestFactory } from "@nestjs/core";
 import type { INestApplication } from "@nestjs/common";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { AppModule } from "../app.module.ts";
-import { startFakeIssuer, type FakeIssuer } from "../testing/fake-issuer.ts";
+import { createApp } from "../../create-app.ts";
+import { startFakeIssuer, type FakeIssuer } from "../../testing/fake-issuer.ts";
 
 let testDb: TestDatabase;
 let issuer: FakeIssuer;
@@ -88,14 +87,13 @@ async function addMembership(userId: string, status: "active" | "suspended", nam
 beforeAll(async () => {
   testDb = await createTestDatabase();
   issuer = await startFakeIssuer("project-123");
-  app = await NestFactory.create(
-    AppModule.forRoot({
-      config: { oidcIssuer: issuer.issuer, oidcAudience: issuer.audience },
-      pool: testDb.appPool,
-      jwksCooldownMs: 0,
-    }),
-    { logger: false },
-  );
+  app = await createApp({
+    config: { oidcIssuer: issuer.issuer, oidcAudience: issuer.audience },
+    pool: testDb.appPool,
+    jwksCooldownMs: 0,
+    rateLimit: { limit: 1_000_000, windowMs: 60_000 },
+    log: { level: "silent" },
+  });
   await app.listen(0, "127.0.0.1");
   baseUrl = await app.getUrl();
 });

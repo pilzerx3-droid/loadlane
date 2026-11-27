@@ -1,7 +1,7 @@
 // Unit tests for access token verification against a local fake issuer (no database needed).
 import { SignJWT } from "jose";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { startFakeIssuer, type FakeIssuer } from "../testing/fake-issuer.ts";
+import { startFakeIssuer, type FakeIssuer } from "../../testing/fake-issuer.ts";
 import { JoseTokenVerifier } from "./jose-token-verifier.ts";
 import { OidcDiscovery } from "./oidc-discovery.ts";
 import {

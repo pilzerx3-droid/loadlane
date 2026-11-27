@@ -5,7 +5,8 @@ import {
   ServiceUnavailableException,
   UnauthorizedException,
 } from "@nestjs/common";
-import type { Request, Response } from "express";
+import type { Response } from "express";
+import type { AuthContext, AuthenticatedRequest } from "../../platform/request-context.ts";
 import {
   InvalidTokenError,
   ProviderUnavailableError,
@@ -15,18 +16,8 @@ import {
   EmailAlreadyRegisteredError,
   EmailNotVerifiedError,
   UserDeactivatedError,
-  type ResolvedUser,
   type UserResolver,
 } from "./user-resolver.ts";
-
-/** Who is calling. Set on the request once the access token has been verified. */
-export interface AuthContext {
-  user: ResolvedUser;
-  issuer: string;
-  subject: string;
-}
-
-export type AuthenticatedRequest = Request & { auth?: AuthContext };
 
 const BEARER_PATTERN = /^Bearer ([A-Za-z0-9\-._~+/]+=*)$/i;
 
@@ -69,10 +60,13 @@ export class Authenticator {
         error.message,
         error.cause instanceof Error ? error.cause.stack : undefined,
       );
-      return new ServiceUnavailableException("The sign-in provider is not reachable");
+      return new ServiceUnavailableException({
+        statusCode: 503,
+        code: "provider_unavailable",
+        message: "The sign-in provider is not reachable",
+      });
     }
     // `code` is for programs (the web app maps it to a message), `message` is for people reading logs.
-    // P1-08 replaces this with the API-wide error format.
     if (error instanceof EmailNotVerifiedError) {
       return new ForbiddenException({
         statusCode: 403,

@@ -11,6 +11,11 @@ export interface ApiConfig {
   oidcIssuer: string;
   /** Value that must appear in the access token's `aud` claim, for ZITADEL the project id. */
   oidcAudience: string;
+  logLevel: "fatal" | "error" | "warn" | "info" | "debug" | "trace" | "silent";
+  /** Requests per client address and minute. */
+  rateLimitPerMinute: number;
+  /** Serve /v1/openapi.json. Defaults to on, except when NODE_ENV is production. */
+  openApiEnabled: boolean;
 }
 
 const LOCAL_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]"]);
@@ -28,6 +33,10 @@ const envSchema = z.object({
   APP_DATABASE_URL: z.string().min(1),
   OIDC_ISSUER: issuerSchema,
   OIDC_AUDIENCE: z.string().min(1),
+  LOG_LEVEL: z.enum(["fatal", "error", "warn", "info", "debug", "trace", "silent"]).default("info"),
+  RATE_LIMIT_PER_MINUTE: z.coerce.number().int().min(1).max(1_000_000).default(120),
+  OPENAPI_ENABLED: z.enum(["true", "false"]).optional(),
+  NODE_ENV: z.string().optional(),
 });
 
 /** Validates the environment and returns typed settings. The error lists every problem at once. */
@@ -46,6 +55,11 @@ export function loadApiConfig(env: Record<string, string | undefined>): ApiConfi
     databaseUrl: values.APP_DATABASE_URL,
     oidcIssuer: values.OIDC_ISSUER,
     oidcAudience: values.OIDC_AUDIENCE,
+    logLevel: values.LOG_LEVEL,
+    rateLimitPerMinute: values.RATE_LIMIT_PER_MINUTE,
+    openApiEnabled: values.OPENAPI_ENABLED
+      ? values.OPENAPI_ENABLED === "true"
+      : values.NODE_ENV !== "production",
   };
 }
 

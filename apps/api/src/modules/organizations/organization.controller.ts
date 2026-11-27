@@ -2,28 +2,36 @@ import { Controller, Get, Inject, NotFoundException, Req } from "@nestjs/common"
 import { schema, withTenant } from "@loadlane/db";
 import { eq } from "drizzle-orm";
 import type pg from "pg";
-import { RequirePermissions, requireTenant, type TenantRequest } from "../access/access.ts";
-import { APP_POOL } from "../auth/tokens.ts";
+import { z } from "zod";
+import { RequirePermissions } from "../../platform/access.ts";
+import { ApiRoute } from "../../platform/openapi.ts";
+import { requireTenant, type TenantRequest } from "../../platform/request-context.ts";
+import { APP_POOL } from "../../platform/tokens.ts";
 
-export interface OrganizationResponse {
-  id: string;
-  name: string;
-  slug: string;
-  region: "us" | "eu";
-  distanceUnit: "mi" | "km";
-  weightUnit: "lb" | "kg";
-  currency: string;
-  locale: string;
-  timezone: string;
-}
+export const organizationResponseSchema = z.object({
+  id: z.uuid(),
+  name: z.string(),
+  slug: z.string(),
+  region: z.enum(["us", "eu"]),
+  distanceUnit: z.enum(["mi", "km"]),
+  weightUnit: z.enum(["lb", "kg"]),
+  currency: z.string().describe("ISO 4217 code"),
+  locale: z.string(),
+  timezone: z.string().describe("IANA time zone name"),
+});
+
+export type OrganizationResponse = z.infer<typeof organizationResponseSchema>;
 
 @Controller("v1")
 export class OrganizationController {
   constructor(@Inject(APP_POOL) private readonly pool: pg.Pool) {}
 
-  /** The organization named in X-Organization-Id, with its unit and locale defaults. */
   @Get("organization")
   @RequirePermissions("organization:read")
+  @ApiRoute({
+    summary: "The organization named in X-Organization-Id, with its unit and locale defaults",
+    response: organizationResponseSchema,
+  })
   async get(@Req() request: TenantRequest): Promise<OrganizationResponse> {
     const { auth, tenant } = requireTenant(request);
     const rows = await withTenant(

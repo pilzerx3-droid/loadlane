@@ -3,11 +3,10 @@ import "reflect-metadata";
 import { Controller, Get, Module, type ExecutionContext } from "@nestjs/common";
 import { DiscoveryModule, NestFactory, Reflector } from "@nestjs/core";
 import { describe, expect, it, vi } from "vitest";
-import type { Authenticator } from "../auth/authenticator.ts";
+import type { Authenticator } from "../modules/authentication/index.ts";
+import { AccessGuard, type MembershipAccess } from "../modules/users-permissions/index.ts";
 import { AccessDeclarationCheck } from "./access-declaration-check.ts";
-import { AuthenticatedOnly, RequirePermissions } from "./access.ts";
-import { AccessGuard } from "./access.guard.ts";
-import type { MembershipAccess } from "./membership-access.ts";
+import { AuthenticatedOnly, Public, RequirePermissions } from "./access.ts";
 
 @Controller("v1")
 class UndeclaredController {
@@ -38,6 +37,12 @@ class DeclaredController {
   @RequirePermissions("organization:read")
   a(): string {
     return "a";
+  }
+
+  @Get("open")
+  @Public()
+  open(): string {
+    return "public";
   }
 
   // Not a route (no @Get): helper methods need no rule.
@@ -99,6 +104,12 @@ describe("AccessGuard at request time", () => {
       authenticate,
     };
   }
+
+  it("lets a public route through without signing anyone in", async () => {
+    const { guard: g, authenticate } = guard();
+    await expect(g.canActivate(contextFor(DeclaredController, "open"))).resolves.toBe(true);
+    expect(authenticate).not.toHaveBeenCalled();
+  });
 
   it("refuses a route without a rule before it even looks at the token", async () => {
     const { guard: g, authenticate } = guard();

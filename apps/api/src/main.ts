@@ -1,15 +1,18 @@
 import "reflect-metadata";
 import { createAppPool } from "@loadlane/db";
-import { NestFactory } from "@nestjs/core";
-import { AppModule } from "./app.module.ts";
+import { createApp } from "./create-app.ts";
 import { loadApiConfig, loadEnvFileIfPresent } from "./config/env.ts";
 
 loadEnvFileIfPresent();
 const config = loadApiConfig(process.env);
 
 const pool = createAppPool(config.databaseUrl);
-const app = await NestFactory.create(AppModule.forRoot({ config, pool }), {
-  logger: ["error", "warn", "log"],
+const app = await createApp({
+  config,
+  pool,
+  rateLimit: { limit: config.rateLimitPerMinute, windowMs: 60_000 },
+  openApiEnabled: config.openApiEnabled,
+  log: { level: config.logLevel },
 });
 
 const shutdown = async (): Promise<void> => {
