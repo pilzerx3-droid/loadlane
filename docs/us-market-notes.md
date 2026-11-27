@@ -16,6 +16,7 @@ Arranging freight for compensation can require FMCSA property broker authority (
 ## Privacy and communication
 
 - No single federal privacy law, but several state laws (for example California). Precise location is typically treated as sensitive data. Keep a consent log and a deletion process. Verify.
+- Open: the audit log stores IP address and user agent of users for security investigations. Decide the retention period and the deletion path with a privacy attorney before launch (see ADR 0002).
 - Texting drivers needs consent (TCPA). SMS providers require registration for business messaging. Verify.
 - If drivers in the EU appear, GDPR applies as well.
 

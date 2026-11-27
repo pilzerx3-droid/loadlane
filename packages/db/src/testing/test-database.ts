@@ -3,7 +3,7 @@
 import { randomUUID } from "node:crypto";
 import pg from "pg";
 import { expect } from "vitest";
-import { databaseUrlFromEnv } from "../env.ts";
+import { appDatabaseUrlFromEnv, databaseUrlFromEnv } from "../env.ts";
 import { runMigrations } from "../migrate.ts";
 
 export interface TestDatabase {
@@ -11,6 +11,9 @@ export interface TestDatabase {
   /** Connection string of the owner role (runs migrations). */
   ownerUrl: string;
   ownerPool: pg.Pool;
+  /** Connection string of the application role loadlane_app. Subject to row-level security. */
+  appUrl: string;
+  appPool: pg.Pool;
   /** Closes all pools and drops the database. */
   drop: () => Promise<void>;
 }
@@ -38,12 +41,17 @@ export async function createTestDatabase(
   const ownerUrl = withDatabaseName(adminUrl, name);
   if (options.migrate ?? true) await runMigrations(ownerUrl);
   const ownerPool = new pg.Pool({ connectionString: ownerUrl, max: 4 });
+  const appUrl = withDatabaseName(appDatabaseUrlFromEnv(), name);
+  const appPool = new pg.Pool({ connectionString: appUrl, max: 4 });
 
   return {
     name,
     ownerUrl,
     ownerPool,
+    appUrl,
+    appPool,
     drop: async () => {
+      await appPool.end();
       await ownerPool.end();
       const dropper = new pg.Client({ connectionString: adminUrl });
       await dropper.connect();

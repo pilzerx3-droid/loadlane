@@ -1,0 +1,73 @@
+import { drizzle, type NodePgDatabase } from "drizzle-orm/node-postgres";
+import pg from "pg";
+import { appDatabaseUrlFromEnv } from "./env.ts";
+import * as schema from "./schema/index.ts";
+
+export type Db = NodePgDatabase<typeof schema>;
+
+export interface TenantContext {
+  /** The organization the request acts for. Without it, every tenant table is empty and read-only. */
+  organizationId?: string;
+  /** The signed-in person. Used for the organization switcher and for self-service on app_user. */
+  userId?: string;
+}
+
+export interface TenantSession {
+  db: Db;
+  /** The raw connection of this transaction, for statements Drizzle cannot express. */
+  client: pg.PoolClient;
+}
+
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function assertUuid(name: string, value: string | undefined): string {
+  if (value === undefined) return "";
+  if (!UUID_PATTERN.test(value)) throw new TypeError(`${name} must be a UUID`);
+  return value;
+}
+
+/** Pool for the application role (loadlane_app). It is subject to row-level security. */
+export function createAppPool(connectionString: string = appDatabaseUrlFromEnv()): pg.Pool {
+  return new pg.Pool({ connectionString });
+}
+
+/**
+ * Runs `fn` in one transaction in which the tenant is set for row-level security (ADR 0002).
+ * The settings are transaction-local, so they cannot leak to the next user of a pooled connection.
+ * Commits when `fn` resolves and rolls back when it throws.
+ *
+ * Callers must have verified that the user may act for the organization (P1-06 and P1-07) before
+ * passing it in: row-level security separates tenants, it does not check who may use which tenant.
+ */
+export async function withTenant<T>(
+  pool: pg.Pool,
+  context: TenantContext,
+  fn: (session: TenantSession) => Promise<T>,
+): Promise<T> {
+  const organizationId = assertUuid("organizationId", context.organizationId);
+  const userId = assertUuid("userId", context.userId);
+
+  const client = await pool.connect();
+  let brokenConnection: Error | undefined;
+  try {
+    await client.query("BEGIN");
+    await client.query(
+      "SELECT set_config('app.organization_id', $1, true), set_config('app.user_id', $2, true)",
+      [organizationId, userId],
+    );
+    const result = await fn({ db: drizzle({ client, schema }), client });
+    await client.query("COMMIT");
+    return result;
+  } catch (error) {
+    try {
+      await client.query("ROLLBACK");
+    } catch (rollbackError) {
+      brokenConnection = new Error("ROLLBACK failed, discarding the connection", {
+        cause: rollbackError,
+      });
+    }
+    throw error;
+  } finally {
+    client.release(brokenConnection);
+  }
+}

@@ -1,13 +1,10 @@
 // Integration test for the core tables (migration 0001). Needs the local PostgreSQL (pnpm infra:up).
+// Everything runs as the application role through withTenant(), exactly like production code.
 import { randomUUID } from "node:crypto";
 import type pg from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import {
-  createTestDatabase,
-  expectPgError,
-  inTransaction,
-  type TestDatabase,
-} from "./testing/test-database.ts";
+import { createTestDatabase, expectPgError, type TestDatabase } from "./testing/test-database.ts";
+import { withTenant, type TenantContext } from "./tenant.ts";
 
 let testDb: TestDatabase;
 
@@ -19,14 +16,9 @@ afterAll(async () => {
   await testDb.drop();
 });
 
-interface Context {
-  organizationId?: string;
-  userId?: string;
-}
-
-/** One transaction per call. Rolls back when the callback throws. */
-function run<T>(_context: Context, fn: (client: pg.PoolClient) => Promise<T>): Promise<T> {
-  return inTransaction(testDb.ownerPool, fn);
+/** One transaction as the application role. Rolls back when the callback throws. */
+function run<T>(context: TenantContext, fn: (client: pg.PoolClient) => Promise<T>): Promise<T> {
+  return withTenant(testDb.appPool, context, ({ client }) => fn(client));
 }
 
 async function createOrganization(client: pg.PoolClient, id: string, slug = `org-${id}`) {
@@ -123,22 +115,21 @@ describe("organization", () => {
 
   it("keeps updated_at current on every update", async () => {
     const id = randomUUID();
-    await run({ organizationId: id }, (c) => createOrganization(c, id));
-    const before = await run({ organizationId: id }, async (c) => {
+    const readUpdatedAt = async (c: pg.PoolClient) => {
       const r = await c.query<{ updated_at: Date }>(
         "SELECT updated_at FROM organization WHERE id = $1",
         [id],
       );
       return r.rows[0]?.updated_at;
+    };
+    const before = await run({ organizationId: id }, async (c) => {
+      await createOrganization(c, id);
+      return readUpdatedAt(c);
     });
     await new Promise((resolve) => setTimeout(resolve, 20));
     const after = await run({ organizationId: id }, async (c) => {
       await c.query("UPDATE organization SET name = 'Renamed' WHERE id = $1", [id]);
-      const r = await c.query<{ updated_at: Date }>(
-        "SELECT updated_at FROM organization WHERE id = $1",
-        [id],
-      );
-      return r.rows[0]?.updated_at;
+      return readUpdatedAt(c);
     });
     expect(before).toBeInstanceOf(Date);
     expect(after && before && after.getTime() > before.getTime()).toBe(true);
@@ -186,8 +177,8 @@ describe("app_user", () => {
 
 describe("role", () => {
   it("contains exactly the four roles from the backlog", async () => {
-    const result = await testDb.ownerPool.query<{ key: string }>(
-      "SELECT key FROM role ORDER BY key",
+    const result = await run({}, (c) =>
+      c.query<{ key: string }>("SELECT key FROM role ORDER BY key"),
     );
     expect(result.rows.map((row) => row.key)).toEqual([
       "admin",
@@ -195,6 +186,13 @@ describe("role", () => {
       "dispatcher",
       "sales",
     ]);
+  });
+
+  it("is read-only for the application role", async () => {
+    await expectPgError(
+      run({}, (c) => c.query("INSERT INTO role (key, description) VALUES ('owner', 'x')")),
+      "42501",
+    );
   });
 });
 
@@ -247,9 +245,9 @@ describe("membership", () => {
         await createMembership(c, randomUUID(), org, user);
       });
     }
-    const count = await testDb.ownerPool.query<{ count: string }>(
-      "SELECT count(*) AS count FROM membership WHERE user_id = $1",
-      [user],
+    // Without a tenant, a person sees their own memberships in every organization.
+    const count = await run({ userId: user }, (c) =>
+      c.query<{ count: string }>("SELECT count(*) AS count FROM membership"),
     );
     expect(Number(count.rows[0]?.count)).toBe(2);
   });
@@ -258,7 +256,7 @@ describe("membership", () => {
     const org = randomUUID();
     const user = randomUUID();
     const membership = randomUUID();
-    await run({ organizationId: org, userId: user }, async (c) => {
+    const roles = await run({ organizationId: org, userId: user }, async (c) => {
       await createOrganization(c, org);
       await createUser(c, user);
       await createMembership(c, membership, org, user);
@@ -268,11 +266,11 @@ describe("membership", () => {
           [org, membership, key],
         );
       }
+      return c.query<{ role_key: string }>(
+        "SELECT role_key FROM membership_role WHERE membership_id = $1 ORDER BY role_key",
+        [membership],
+      );
     });
-    const roles = await testDb.ownerPool.query<{ role_key: string }>(
-      "SELECT role_key FROM membership_role WHERE membership_id = $1 ORDER BY role_key",
-      [membership],
-    );
     expect(roles.rows.map((row) => row.role_key)).toEqual(["dispatcher", "sales"]);
   });
 
@@ -299,12 +297,14 @@ describe("membership", () => {
     const orgB = randomUUID();
     const user = randomUUID();
     const membershipB = randomUUID();
+    await run({ organizationId: orgA }, (c) => createOrganization(c, orgA));
     await run({ organizationId: orgB, userId: user }, async (c) => {
-      await createOrganization(c, orgA);
       await createOrganization(c, orgB);
       await createUser(c, user);
       await createMembership(c, membershipB, orgB, user);
     });
+    // Row-level security lets the insert through (the row claims organization A), but the composite
+    // foreign key notices that the membership belongs to organization B.
     await expectPgError(
       run({ organizationId: orgA, userId: user }, (c) =>
         c.query(
@@ -321,6 +321,17 @@ describe("audit_log", () => {
   async function seedOrganization(): Promise<string> {
     const org = randomUUID();
     await run({ organizationId: org }, (c) => createOrganization(c, org));
+    return org;
+  }
+
+  async function seedEntry(): Promise<string> {
+    const org = await seedOrganization();
+    await run({ organizationId: org }, (c) =>
+      c.query(
+        "INSERT INTO audit_log (organization_id, actor_type, action) VALUES ($1, 'system', 'seed')",
+        [org],
+      ),
+    );
     return org;
   }
 
@@ -360,43 +371,49 @@ describe("audit_log", () => {
   });
 
   describe("is append-only", () => {
-    async function seedEntry(): Promise<string> {
-      const org = await seedOrganization();
-      await run({ organizationId: org }, (c) =>
-        c.query(
-          "INSERT INTO audit_log (organization_id, actor_type, action) VALUES ($1, 'system', 'seed')",
-          [org],
-        ),
+    it("gives the application role no privilege to update, delete or truncate", async () => {
+      const org = await seedEntry();
+      await expectPgError(
+        run({ organizationId: org }, (c) => c.query("UPDATE audit_log SET action = 'tampered'")),
+        "42501",
       );
-      return org;
+      await expectPgError(
+        run({ organizationId: org }, (c) => c.query("DELETE FROM audit_log")),
+        "42501",
+      );
+      await expectPgError(
+        run({ organizationId: org }, (c) => c.query("TRUNCATE audit_log")),
+        "42501",
+      );
+    });
+
+    // The owner is the only role that could still change rows, so the triggers are tested as the owner.
+    // Row-level security is switched off inside a rolled-back transaction so that the owner reaches the rows.
+    async function asOwnerWithoutRls(statement: string): Promise<void> {
+      const client = await testDb.ownerPool.connect();
+      try {
+        await client.query("BEGIN");
+        await client.query("ALTER TABLE audit_log NO FORCE ROW LEVEL SECURITY");
+        await client.query(statement);
+      } finally {
+        await client.query("ROLLBACK");
+        client.release();
+      }
     }
 
-    it("rejects updates", async () => {
-      const org = await seedEntry();
-      await expectPgError(
-        run({ organizationId: org }, (c) =>
-          c.query("UPDATE audit_log SET action = 'tampered' WHERE organization_id = $1", [org]),
-        ),
-        "23001",
-      );
-    });
-
-    it("rejects deletes", async () => {
-      const org = await seedEntry();
-      await expectPgError(
-        run({ organizationId: org }, (c) =>
-          c.query("DELETE FROM audit_log WHERE organization_id = $1", [org]),
-        ),
-        "23001",
-      );
-    });
-
-    it("rejects truncate", async () => {
+    it("makes a trigger reject updates even for the table owner", async () => {
       await seedEntry();
-      await expectPgError(
-        run({}, (c) => c.query("TRUNCATE audit_log")),
-        "23001",
-      );
+      await expectPgError(asOwnerWithoutRls("UPDATE audit_log SET action = 'tampered'"), "23001");
+    });
+
+    it("makes a trigger reject deletes even for the table owner", async () => {
+      await seedEntry();
+      await expectPgError(asOwnerWithoutRls("DELETE FROM audit_log"), "23001");
+    });
+
+    it("makes a trigger reject truncate even for the table owner", async () => {
+      await seedEntry();
+      await expectPgError(asOwnerWithoutRls("TRUNCATE audit_log"), "23001");
     });
   });
 });
