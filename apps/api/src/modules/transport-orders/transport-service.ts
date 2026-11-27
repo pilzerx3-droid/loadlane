@@ -96,8 +96,8 @@ export class TransportService {
       const rows = await client.query<Row>(
         `SELECT t.id, t.number, t.status, t.customer_reference, t.purchase_order, t.created_at,
                 c.id AS customer_id, c.name AS customer_name, ca.id AS carrier_id, ca.name AS carrier_name,
-                ol.city AS origin_city, ol.state AS origin_state, o.window_start AS origin_start,
-                dl.city AS destination_city, dl.state AS destination_state, d.window_start AS destination_start
+                ol.city AS origin_city, ol.state AS origin_state, ol.timezone AS origin_timezone, o.window_start AS origin_start,
+                dl.city AS destination_city, dl.state AS destination_state, dl.timezone AS destination_timezone, d.window_start AS destination_start
          ${LIST_FROM} ${where}
          ORDER BY t.number DESC
          LIMIT $${params.length + 1} OFFSET $${params.length + 2}`,
@@ -119,11 +119,13 @@ export class TransportService {
           origin: {
             city: row["origin_city"] as string,
             state: row["origin_state"] as string,
+            timezone: row["origin_timezone"] as string,
             windowStart: (row["origin_start"] as Date).toISOString(),
           },
           destination: {
             city: row["destination_city"] as string,
             state: row["destination_state"] as string,
+            timezone: row["destination_timezone"] as string,
             windowStart: (row["destination_start"] as Date).toISOString(),
           },
           createdAt: (row["created_at"] as Date).toISOString(),

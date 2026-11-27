@@ -89,6 +89,7 @@ export const transportListQuerySchema = z.object({
 const place = z.object({
   city: z.string(),
   state: z.string(),
+  timezone: z.string().describe("IANA time zone of the place"),
   windowStart: z.iso.datetime(),
 });
 

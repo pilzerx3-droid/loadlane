@@ -28,6 +28,11 @@ describe("navigationFor", () => {
     expect(labels(["customer:manage"])).toEqual(["Overview"]);
   });
 
+  it("shows transports to people who may read them", () => {
+    expect(labels(["transport:read"])).toEqual(["Overview", "Transports"]);
+    expect(labels(["transport:manage"])).toEqual(["Overview"]);
+  });
+
   it("ignores permissions it does not know", () => {
     expect(labels(["spot:award", "nonsense"])).toEqual(["Overview"]);
   });
@@ -47,6 +52,7 @@ describe("navigationFor", () => {
   it("lists only pages that exist", () => {
     expect(NAV_ITEMS.map((item) => item.href)).toEqual([
       "/",
+      "/transports",
       "/customers",
       "/carriers",
       "/locations",

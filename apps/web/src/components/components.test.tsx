@@ -2,6 +2,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { MASTER_DATA } from "../lib/master-data";
 import { MasterDataList } from "./master-data-list";
+import { TransportsList } from "./transport-views";
 import { MembersTable, Pagination, roleLabel } from "./members-table";
 import { describeOrganization, OrganizationDetails } from "./organization-details";
 import {
@@ -223,5 +224,66 @@ describe("MasterDataList", () => {
     expect(markup).toContain("page=2");
     expect(markup).toContain("q=ac");
     expect(markup).toContain("archived=1");
+  });
+});
+
+describe("TransportsList", () => {
+  const item = {
+    id: "t1",
+    number: 7,
+    reference: "LL-000007",
+    status: "in_transit" as const,
+    customer: { id: "c1", name: "Acme Foods" },
+    carrier: null,
+    customerReference: "SO-1001",
+    purchaseOrder: null,
+    origin: {
+      city: "Dallas",
+      state: "TX",
+      timezone: "America/Chicago",
+      windowStart: "2026-12-01T20:00:00.000Z",
+    },
+    destination: {
+      city: "Denver",
+      state: "CO",
+      timezone: "America/Denver",
+      windowStart: "2026-12-02T15:00:00.000Z",
+    },
+    createdAt: "2026-11-30T12:00:00.000Z",
+  };
+  const base = { total: 1, page: 1, pageSize: 25, q: "", status: "", canManage: true };
+
+  it("shows the transport with its status in words, route, pickup time in the pickup's zone and carrier", () => {
+    const markup = html(<TransportsList {...base} items={[item]} />);
+    expect(markup).toContain('href="/transports/t1"');
+    expect(markup).toContain("LL-000007");
+    expect(markup).toContain("SO-1001");
+    expect(markup).toContain("In transit");
+    expect(markup).toContain("Dallas, TX");
+    expect(markup).toContain("Denver, CO");
+    expect(markup).toContain("12/01/2026 2:00 PM CST");
+    expect(markup).toContain("Not assigned");
+  });
+
+  it("offers to create the first transport only to people who may", () => {
+    expect(html(<TransportsList {...base} items={[]} total={0} />)).toContain("/transports/new");
+    expect(html(<TransportsList {...base} items={[]} total={0} canManage={false} />)).not.toContain(
+      "/transports/new",
+    );
+  });
+
+  it("says nothing matched when filtered, and keeps the filter in the page links", () => {
+    expect(html(<TransportsList {...base} items={[]} total={0} q="zzz" />)).toContain(
+      "No transports match",
+    );
+    const markup = html(
+      <TransportsList {...base} items={[item]} total={80} q="acme" status="planned" />,
+    );
+    expect(markup).toContain("q=acme");
+    expect(markup).toContain("status=planned");
+  });
+
+  it("does not offer a delayed filter: delay is derived later, not a status", () => {
+    expect(html(<TransportsList {...base} items={[]} total={0} />)).not.toContain("Delayed");
   });
 });

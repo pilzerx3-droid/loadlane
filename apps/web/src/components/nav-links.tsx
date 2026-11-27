@@ -4,6 +4,7 @@ import {
   Building2,
   LayoutDashboard,
   MapPin,
+  Package,
   Settings,
   Truck,
   Users,
@@ -15,6 +16,7 @@ import { isActive, type NavIcon, type NavItem } from "../lib/navigation";
 
 const ICONS: Record<NavIcon, LucideIcon> = {
   overview: LayoutDashboard,
+  transports: Package,
   customers: Building2,
   carriers: Truck,
   locations: MapPin,

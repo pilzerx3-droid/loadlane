@@ -1,4 +1,5 @@
-export type NavIcon = "overview" | "customers" | "carriers" | "locations" | "members" | "settings";
+export type NavIcon =
+  "overview" | "transports" | "customers" | "carriers" | "locations" | "members" | "settings";
 
 export interface NavItem {
   href: string;
@@ -15,6 +16,7 @@ export interface NavItem {
  */
 export const NAV_ITEMS: readonly NavItem[] = [
   { href: "/", label: "Overview", icon: "overview" },
+  { href: "/transports", label: "Transports", icon: "transports", requires: "transport:read" },
   { href: "/customers", label: "Customers", icon: "customers", requires: "customer:read" },
   { href: "/carriers", label: "Carriers", icon: "carriers", requires: "carrier:read" },
   { href: "/locations", label: "Locations", icon: "locations", requires: "location:read" },
