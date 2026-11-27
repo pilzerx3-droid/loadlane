@@ -9,11 +9,14 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-loadlane}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-loadlane_dev_only}
       POSTGRES_DB: ${POSTGRES_DB:-loadlane}
+      APP_DB_PASSWORD: ${APP_DB_PASSWORD:-loadlane_app_dev_only}
     ports:
       - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
     volumes:
       # PostgreSQL 18 images keep data in a versioned subdirectory below this path.
       - postgres-data:/var/lib/postgresql
+      # Creates the application login role on first start (see the script for details).
+      - ./postgres/init:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD-SHELL", 'pg_isready -U "$${POSTGRES_USER}" -d "$${POSTGRES_DB}"']
       interval: 5s
