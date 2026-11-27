@@ -1,0 +1,14 @@
+{
+  "name": "@loadlane/web",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Web application (Next.js, added in P1-09)",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run --passWithNoTests"
+  }
+}

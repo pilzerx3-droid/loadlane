@@ -1,0 +1,14 @@
+{
+  "name": "@loadlane/api",
+  "version": "0.0.0",
+  "private": true,
+  "description": "API service (NestJS, added in P1-08)",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run --passWithNoTests"
+  }
+}

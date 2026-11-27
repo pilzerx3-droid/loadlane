@@ -1,0 +1,8 @@
+pnpm-lock.yaml
+node_modules/
+dist/
+.next/
+coverage/
+**/migrations/meta/
+# Kept verbatim as provided by the product owner
+docs/masterprompt.md
