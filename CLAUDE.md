@@ -49,10 +49,14 @@ Requires Node 26+, pnpm 12, Docker Desktop. Copy `.env.example` to `.env` first.
 - `pnpm db:migrate`: apply SQL migrations from `packages/db/migrations`
 - `pnpm db:generate`: generate a migration from schema changes (rename it, review the SQL)
 - `pnpm db:check`: fail on schema/migration drift (needs migrations committed)
+- `pnpm api:start`: build and start the API on port 4000 (needs the OIDC settings, see docs/dev-setup-zitadel.md)
+- `pnpm web:dev`: start the web app on port 3000
 
 Tenant isolation (ADR 0002): application code reads and writes only through `withTenant()` from `@loadlane/db`, connected as `loadlane_app` (`APP_DATABASE_URL`). Never use the owner connection (`DATABASE_URL`) outside migrations and test setup. Every new table needs forced RLS, policies, minimal grants and a two-organization test in `packages/db/src/rls.test.ts`. After pulling P1-05, run `pnpm infra:reset` once: it recreates the local volumes so the `loadlane_app` login is created.
 
-Notes: TypeScript is pinned to 6.0.x until typescript-eslint supports 7.x. Tests in `packages/db` need the local stack running. Local stack uses Valkey (BSD-3) instead of Redis and SeaweedFS (Apache-2.0) instead of MinIO for license reasons.
+Sign-in (ADR 0003): ZITADEL Cloud (US) through standard OIDC only, no vendor SDK. The API verifies JWT access tokens behind `TokenVerifier`; people are identified by (issuer, subject), never linked by e-mail. The web app keeps sessions server-side in Valkey. NestJS code uses explicit `@Inject(token)` because the toolchain does not emit decorator metadata. Packages under `packages/*` must have no side effects on import (the API bundles them).
+
+Notes: TypeScript is pinned to 6.0.x until typescript-eslint supports 7.x. Tests in `packages/db`, `apps/api` and `apps/web` need the local stack running. Local stack uses Valkey (BSD-3) instead of Redis and SeaweedFS (Apache-2.0) instead of MinIO for license reasons.
 
 ## Current phase
 

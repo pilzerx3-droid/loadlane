@@ -43,15 +43,24 @@ Facts were read on 2026-11-27 from the providers' official pages only (docs, pri
 ## Consequences for the implementation (Part 2 of P1-06)
 
 - Our own interface `TokenVerifier` verifies access tokens with a generic JWT library. It checks issuer, audience (our own client id or API identifier, because not every provider sets `aud`), expiry, signature and an algorithm allowlist.
-- Verified e-mail is read from the ID token or from the standard userinfo endpoint, never assumed.
-- A person is identified only by `(issuer, subject)`. Linking accounts by e-mail address is not automatic (account takeover risk).
+- Verified e-mail is read from the standard userinfo endpoint on first sign-in, never assumed. A person whose e-mail is not verified is refused (403, code `email_not_verified`).
+- A person is identified only by `(issuer, subject)`. Linking accounts by e-mail address is not automatic (account takeover risk); a second identity with a known e-mail gets 409 (`email_in_use`).
 - With ZITADEL, the access token type must be set to JWT for the application; to be confirmed against a real test instance.
+- The browser flow is Authorization Code with PKCE as a public client (no client secret). Sessions live server-side in Valkey; the browser holds an opaque id in an HttpOnly cookie.
+- Looking up and registering people before their id is known needs a narrow database policy (migration 0003, ADR 0002).
+
+## Implementation status (P1-06)
+
+- Built: `TokenVerifier` with a jose implementation, discovery and key set handling, first-sign-in registration, `GET /v1/me`, web login, callback, logout, session renewal.
+- Tested against a local stand-in for the provider and the real database (see docs/dev-setup-zitadel.md, "What was tested").
+- **Not yet verified against a live ZITADEL instance.** Open items to confirm there: access tokens are JWTs, `aud` contains the project id, userinfo returns `email_verified`, the end-session redirect works. This section is updated when someone has signed in once.
 
 ## Open questions
 
-- Product owner: confirm the provider (recommendation: ZITADEL Cloud, US region).
 - Commercial: who pays for enterprise SSO connections.
 - Legal: processing agreement with the chosen provider and the retention of authentication logs (see ADR 0002).
+- First-sign-in registration is not written to `audit_log`, because that table requires an organization and a new person has none yet. A platform-level audit trail is needed before launch.
+- Refresh tokens that rotate can fail when two requests refresh in parallel. The web app falls back to tokens another request stored, but a stricter lock may be needed under load.
 
 ## Sources
 

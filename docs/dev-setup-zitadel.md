@@ -46,17 +46,28 @@ OIDC_CLIENT_ID=<client id from step 2>
 OIDC_AUDIENCE=<project id from step 3>
 ```
 
-Start the stack and the apps:
+Start the stack, then the API and the web app (each in its own terminal):
 
 ```powershell
 pnpm infra:up
 pnpm db:migrate
-pnpm --filter @loadlane/api build
-pnpm --filter @loadlane/api start
-pnpm --filter @loadlane/web dev
 ```
 
-Open http://localhost:3000 and sign in with the test user. A new user has no organization yet, so the page shows an empty state. Creating organizations arrives with backlog item P1-09.
+```powershell
+pnpm api:start
+```
+
+```powershell
+pnpm web:dev
+```
+
+Open http://localhost:3000 (not 127.0.0.1: the redirect URI registered in ZITADEL must match exactly) and sign in with the test user. A new user has no organization yet, so the page shows an empty state. Creating organizations arrives with backlog item P1-09.
+
+Next.js sends anonymous usage data unless you opt out. To disable it on your machine run `pnpm --filter @loadlane/web exec next telemetry disable` once.
+
+## What was tested
+
+The unit and integration tests use a local stand-in for the provider and prove Loadlane's own checks (token verification, registration, tenant isolation, session handling). They do not prove that ZITADEL behaves the same way. That is checked by signing in once against your instance; ADR 0003 is updated when this has been done.
 
 ## Logout
 
