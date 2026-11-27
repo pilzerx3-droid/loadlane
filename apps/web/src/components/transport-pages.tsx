@@ -4,7 +4,7 @@ import { Button, PageHeader } from "@loadlane/ui";
 import { apiRequest } from "../lib/api-client";
 import { getAuthDeps } from "../lib/deps";
 import { parsePage } from "../lib/paging";
-import { isoToLocalInput } from "../lib/time";
+import { isoToLocalInput } from "@loadlane/shared";
 import {
   locationOptionListSchema,
   optionListSchema,

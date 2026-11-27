@@ -19,6 +19,8 @@ import { ZodPipe } from "../../platform/validation.ts";
 import {
   changeStatusSchema,
   createTransportSchema,
+  importReportSchema,
+  importTransportsSchema,
   transportDetailSchema,
   transportListQuerySchema,
   transportListResponseSchema,
@@ -26,8 +28,9 @@ import {
   type TransportDetail,
   type TransportListResponse,
 } from "./transport.schemas.ts";
+import type { TransportImporter, ImportReport } from "./transport-import.ts";
 import type { TransportService } from "./transport-service.ts";
-import { TRANSPORT_SERVICE } from "./tokens.ts";
+import { TRANSPORT_IMPORTER, TRANSPORT_SERVICE } from "./tokens.ts";
 
 function contextOf(request: TenantRequest & { id?: unknown }) {
   const { auth, tenant } = requireTenant(request);
@@ -40,7 +43,10 @@ function contextOf(request: TenantRequest & { id?: unknown }) {
 
 @Controller("v1/transports")
 export class TransportController {
-  constructor(@Inject(TRANSPORT_SERVICE) private readonly service: TransportService) {}
+  constructor(
+    @Inject(TRANSPORT_SERVICE) private readonly service: TransportService,
+    @Inject(TRANSPORT_IMPORTER) private readonly importer: TransportImporter,
+  ) {}
 
   @Get()
   @RequirePermissions("transport:read")
@@ -54,6 +60,22 @@ export class TransportController {
     @Query(new ZodPipe(transportListQuerySchema)) query: z.output<typeof transportListQuerySchema>,
   ): Promise<TransportListResponse> {
     return this.service.list(contextOf(request), query);
+  }
+
+  @Post("import")
+  @HttpCode(200)
+  @RequirePermissions("transport:manage")
+  @ApiRoute({
+    summary:
+      "Check a CSV file of transports, or import it. All rows are imported or none. Customers, carriers and locations are matched by name.",
+    body: importTransportsSchema,
+    response: importReportSchema,
+  })
+  importCsv(
+    @Req() request: TenantRequest,
+    @Body(new ZodPipe(importTransportsSchema)) body: z.output<typeof importTransportsSchema>,
+  ): Promise<ImportReport> {
+    return this.importer.run(contextOf(request), body.csv, body.dryRun);
   }
 
   @Get(":id")

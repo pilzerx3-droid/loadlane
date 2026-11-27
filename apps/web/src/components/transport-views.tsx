@@ -18,7 +18,7 @@ import {
 } from "@loadlane/ui";
 import { changeStatusAction } from "../app/transport-actions";
 import type { TransportDetail, TransportListItem } from "../lib/transport-api";
-import { formatInZone, formatWindow } from "../lib/time";
+import { formatInZone, formatWindow } from "@loadlane/shared";
 import { Pagination } from "./members-table";
 
 const STATUS_VARIANT: Record<TransportStatus, BadgeProps["variant"]> = {

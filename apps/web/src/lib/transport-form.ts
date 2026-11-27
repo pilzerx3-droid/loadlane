@@ -1,4 +1,4 @@
-import { localTimeToIso } from "./time";
+import { localTimeToIso } from "@loadlane/shared";
 
 export interface StopValues {
   type: "pickup" | "delivery";

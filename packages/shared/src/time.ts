@@ -115,3 +115,54 @@ export function formatWindow(startIso: string, endIso: string, timeZone: string)
   const end = formatInZone(endIso, timeZone);
   return `${start} – ${sameDay ? end.slice(end.indexOf(" ") + 1) : end}`;
 }
+
+const FREE_FORM = /^(\d{4})-(\d{1,2})-(\d{1,2})[ T](\d{1,2}):(\d{2})$/;
+const US_FORM = /^(\d{1,2})\/(\d{1,2})\/(\d{4})[ T](\d{1,2}):(\d{2})(?:\s*([AaPp][Mm]))?$/;
+
+/**
+ * Reads a date and time as people write them in spreadsheets, without a zone: `2026-12-01 14:30`,
+ * `12/01/2026 14:30` or `12/01/2026 2:30 PM`. Returns the value of a datetime-local field
+ * (`2026-12-01T14:30`) or undefined when the text is not a real date and time.
+ */
+export function parseLocalDateTime(text: string): string | undefined {
+  const value = text.trim();
+  let year: number, month: number, day: number, hour: number, minute: number;
+  const free = FREE_FORM.exec(value);
+  const us = US_FORM.exec(value);
+  if (free) {
+    [year, month, day, hour, minute] = free.slice(1).map(Number) as [
+      number,
+      number,
+      number,
+      number,
+      number,
+    ];
+  } else if (us) {
+    [month, day, year, hour, minute] = us.slice(1, 6).map(Number) as [
+      number,
+      number,
+      number,
+      number,
+      number,
+    ];
+    const meridiem = us[6]?.toLowerCase();
+    if (meridiem) {
+      if (hour < 1 || hour > 12) return undefined;
+      hour = (hour % 12) + (meridiem === "pm" ? 12 : 0);
+    }
+  } else {
+    return undefined;
+  }
+  const check = new Date(Date.UTC(year, month - 1, day, hour, minute));
+  if (
+    check.getUTCFullYear() !== year ||
+    check.getUTCMonth() !== month - 1 ||
+    check.getUTCDate() !== day ||
+    check.getUTCHours() !== hour ||
+    minute > 59
+  ) {
+    return undefined;
+  }
+  const two = (n: number) => String(n).padStart(2, "0");
+  return `${year}-${two(month)}-${two(day)}T${two(hour)}:${two(minute)}`;
+}

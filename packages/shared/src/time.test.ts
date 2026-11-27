@@ -4,8 +4,9 @@ import {
   formatInZone,
   formatWindow,
   isoToLocalInput,
+  parseLocalDateTime,
   localTimeToIso,
-} from "./time";
+} from "./time.ts";
 
 describe("localTimeToIso", () => {
   it("reads a time in the zone it was typed for", () => {
@@ -96,5 +97,38 @@ describe("formatting", () => {
     expect(
       formatWindow("2026-12-01T20:00:00.000Z", "2026-12-01T20:00:00.000Z", "America/Chicago"),
     ).toBe("12/01/2026 2:00 PM CST");
+  });
+});
+
+describe("parseLocalDateTime", () => {
+  it.each([
+    ["2026-12-01 14:30", "2026-12-01T14:30"],
+    ["2026-12-01T14:30", "2026-12-01T14:30"],
+    ["2026-12-1 9:05", "2026-12-01T09:05"],
+    ["12/01/2026 14:30", "2026-12-01T14:30"],
+    ["1/5/2026 8:00", "2026-01-05T08:00"],
+    ["12/01/2026 2:30 PM", "2026-12-01T14:30"],
+    ["12/01/2026 2:30pm", "2026-12-01T14:30"],
+    ["12/01/2026 12:00 AM", "2026-12-01T00:00"],
+    ["12/01/2026 12:00 PM", "2026-12-01T12:00"],
+    ["  12/01/2026 12:15 pm ", "2026-12-01T12:15"],
+  ])("reads %j as %s", (text, expected) => {
+    expect(parseLocalDateTime(text)).toBe(expected);
+  });
+
+  it.each([
+    "",
+    "tomorrow",
+    "2026-12-01",
+    "12/01/2026",
+    "13/01/2026 10:00",
+    "02/30/2026 10:00",
+    "12/01/2026 25:00",
+    "12/01/2026 13:00 PM",
+    "12/01/2026 0:30 AM",
+    "12/01/2026 10:75",
+    "2026-02-30 10:00",
+  ])("rejects %j", (text) => {
+    expect(parseLocalDateTime(text)).toBeUndefined();
   });
 });

@@ -144,7 +144,18 @@ export class TransportService {
   }
 
   async create(context: TransportContext, input: CreateTransportInput): Promise<TransportDetail> {
-    return withTenant(this.pool, this.tenant(context), async ({ client }) => {
+    return withTenant(this.pool, this.tenant(context), ({ client }) =>
+      this.createWithin(client, context, input),
+    );
+  }
+
+  /** Creates a transport inside a transaction the caller already opened (the CSV import creates many in one). */
+  async createWithin(
+    client: pg.PoolClient,
+    context: TransportContext,
+    input: CreateTransportInput,
+  ): Promise<TransportDetail> {
+    {
       await this.checkReferences(client, input.customerId, input.carrierId, input.stops);
 
       // Take the next number. The row lock makes parallel creations wait, so numbers are gapless per organization.
@@ -188,7 +199,7 @@ export class TransportService {
       const detail = await this.load(client, id);
       if (!detail) throw new NotFoundException();
       return detail;
-    });
+    }
   }
 
   async update(

@@ -346,6 +346,7 @@ describe("OpenAPI document", () => {
       "TransportController.changeStatus",
       "TransportController.create",
       "TransportController.get",
+      "TransportController.importCsv",
       "TransportController.list",
       "TransportController.update",
     ]);

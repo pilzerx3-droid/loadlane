@@ -167,3 +167,31 @@ export type UpdateTransportInput = z.output<typeof updateTransportSchema>;
 export type TransportListQuery = z.output<typeof transportListQuerySchema>;
 export type TransportDetail = z.infer<typeof transportDetailSchema>;
 export type TransportListResponse = z.infer<typeof transportListResponseSchema>;
+
+export const importTransportsSchema = z.strictObject({
+  csv: z
+    .string()
+    .min(1)
+    .max(90_000)
+    .describe(
+      "The CSV text with a header row. Columns: customer, pickup_location, pickup_start, pickup_end, delivery_location, delivery_start, delivery_end; optional: customer_reference, purchase_order, weight_lb, pieces, carrier, notes. At most 200 rows.",
+    ),
+  dryRun: z
+    .boolean()
+    .default(true)
+    .describe("true checks the file and writes nothing; false imports all rows or none"),
+});
+
+export const importReportSchema = z.object({
+  status: z.enum(["preview", "imported", "rejected"]),
+  fileProblems: z.array(z.string()),
+  rows: z.array(z.object({ line: z.number().int(), problems: z.array(z.string()) })),
+  summary: z.object({
+    total: z.number().int(),
+    valid: z.number().int(),
+    failed: z.number().int(),
+  }),
+  created: z.array(z.string()).describe("References of the created transports"),
+});
+
+export type ImportTransportsInput = z.output<typeof importTransportsSchema>;

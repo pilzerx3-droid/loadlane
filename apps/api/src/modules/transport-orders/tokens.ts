@@ -1,1 +1,2 @@
 export const TRANSPORT_SERVICE = Symbol("TRANSPORT_SERVICE");
+export const TRANSPORT_IMPORTER = Symbol("TRANSPORT_IMPORTER");
