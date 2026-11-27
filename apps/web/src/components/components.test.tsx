@@ -1,6 +1,7 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { MASTER_DATA } from "../lib/master-data";
+import { Dashboard } from "./dashboard";
 import { MasterDataList } from "./master-data-list";
 import { TransportsList } from "./transport-views";
 import { MembersTable, Pagination, roleLabel } from "./members-table";
@@ -285,5 +286,45 @@ describe("TransportsList", () => {
 
   it("does not offer a delayed filter: delay is derived later, not a status", () => {
     expect(html(<TransportsList {...base} items={[]} total={0} />)).not.toContain("Delayed");
+  });
+});
+
+describe("Dashboard", () => {
+  const summary = {
+    total: 12,
+    byStatus: { created: 2, planned: 3, in_transit: 4, delivered: 3 },
+    active: 4,
+    open: 5,
+    withoutCarrier: 5,
+    pickupsNext24Hours: 2,
+    deliveredLast7Days: 3,
+  };
+
+  it("shows the counts and links to the matching list", () => {
+    const markup = html(<Dashboard summary={summary} canManage />);
+    expect(markup).toContain("Active");
+    expect(markup).toContain("Pickups in 24 hours");
+    expect(markup).toContain('href="/transports?status=created,planned"');
+    expect(markup).toContain("12 in total");
+    expect(markup).toContain("In transit");
+  });
+
+  it("lists every status, also those with no transports, as zero", () => {
+    const markup = html(<Dashboard summary={summary} canManage />);
+    expect(markup).toContain("Completed");
+    expect(markup).toContain("Cancelled");
+  });
+
+  it("is honest about what it does not know yet: no late or position counts", () => {
+    const markup = html(<Dashboard summary={summary} canManage />);
+    expect(markup).toContain("do not estimate");
+    expect(markup).not.toContain("Late transports</p>");
+  });
+
+  it("shows an empty state instead of zeros when there are no transports", () => {
+    const empty = { ...summary, total: 0, byStatus: {}, active: 0, open: 0 };
+    expect(html(<Dashboard summary={empty} canManage />)).toContain("No transports yet");
+    expect(html(<Dashboard summary={empty} canManage />)).toContain("/transports/new");
+    expect(html(<Dashboard summary={empty} canManage={false} />)).not.toContain("/transports/new");
   });
 });

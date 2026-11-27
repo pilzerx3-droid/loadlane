@@ -4,6 +4,7 @@ import {
   canTransition,
   nextTransportStatuses,
   STATUSES_REQUIRING_CARRIER,
+  TRANSPORT_STATUSES,
   type TransportStatus,
 } from "@loadlane/shared";
 import type pg from "pg";
@@ -12,6 +13,7 @@ import type {
   CreateTransportInput,
   TransportDetail,
   TransportListQuery,
+  TransportSummary,
   TransportListResponse,
   UpdateTransportInput,
 } from "./transport.schemas.ts";
@@ -131,6 +133,52 @@ export class TransportService {
           createdAt: (row["created_at"] as Date).toISOString(),
         })),
         page: { limit: query.limit, offset: query.offset, total: total.rows[0]?.n ?? 0 },
+      };
+    });
+  }
+
+  /** Counts for the dashboard. Everything comes from stored transports; nothing is estimated. */
+  async summary(context: TransportContext): Promise<TransportSummary> {
+    return withTenant(this.pool, this.tenant(context), async ({ client }) => {
+      const byStatus = await client.query<{ status: TransportStatus; n: number }>(
+        "SELECT status, count(*)::int AS n FROM transport GROUP BY status",
+      );
+      const extra = await client.query<{
+        without_carrier: number;
+        pickups: number;
+        delivered: number;
+      }>(
+        `SELECT
+           (SELECT count(*)::int FROM transport WHERE carrier_id IS NULL AND status NOT IN ('cancelled', 'delivered', 'completed')) AS without_carrier,
+           (SELECT count(*)::int FROM transport t JOIN stop s ON s.transport_id = t.id AND s.sequence = 1
+              WHERE t.status IN ('created', 'planned', 'assigned', 'confirmed')
+                AND s.window_start >= now() AND s.window_start < now() + interval '24 hours') AS pickups,
+           (SELECT count(*)::int FROM transport_event
+              WHERE to_status = 'delivered' AND occurred_at >= now() - interval '7 days') AS delivered`,
+      );
+      const counts = Object.fromEntries(TRANSPORT_STATUSES.map((status) => [status, 0])) as Record<
+        TransportStatus,
+        number
+      >;
+      for (const row of byStatus.rows) counts[row.status] = row.n;
+      const sum = (statuses: readonly TransportStatus[]) =>
+        statuses.reduce((total, status) => total + counts[status], 0);
+      const row = extra.rows[0];
+      return {
+        total: sum(TRANSPORT_STATUSES),
+        byStatus: counts,
+        active: sum([
+          "assigned",
+          "confirmed",
+          "loading",
+          "in_transit",
+          "at_destination",
+          "unloading",
+        ]),
+        open: sum(["created", "planned"]),
+        withoutCarrier: row?.without_carrier ?? 0,
+        pickupsNext24Hours: row?.pickups ?? 0,
+        deliveredLast7Days: row?.delivered ?? 0,
       };
     });
   }

@@ -24,9 +24,11 @@ import {
   transportDetailSchema,
   transportListQuerySchema,
   transportListResponseSchema,
+  transportSummarySchema,
   updateTransportSchema,
   type TransportDetail,
   type TransportListResponse,
+  type TransportSummary,
 } from "./transport.schemas.ts";
 import type { TransportImporter, ImportReport } from "./transport-import.ts";
 import type { TransportService } from "./transport-service.ts";
@@ -60,6 +62,16 @@ export class TransportController {
     @Query(new ZodPipe(transportListQuerySchema)) query: z.output<typeof transportListQuerySchema>,
   ): Promise<TransportListResponse> {
     return this.service.list(contextOf(request), query);
+  }
+
+  @Get("summary")
+  @RequirePermissions("transport:read")
+  @ApiRoute({
+    summary: "Counts for the dashboard: transports per status and what needs attention",
+    response: transportSummarySchema,
+  })
+  summary(@Req() request: TenantRequest): Promise<TransportSummary> {
+    return this.service.summary(contextOf(request));
   }
 
   @Post("import")

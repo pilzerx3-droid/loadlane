@@ -352,6 +352,7 @@ describe("OpenAPI document", () => {
       "TransportController.get",
       "TransportController.importCsv",
       "TransportController.list",
+      "TransportController.summary",
       "TransportController.update",
     ]);
     for (const route of routes) {

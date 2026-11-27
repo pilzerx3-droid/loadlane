@@ -527,3 +527,97 @@ describe("tenant isolation", () => {
     }
   });
 });
+
+describe("summary", () => {
+  const soon = (hours: number) => new Date(Date.now() + hours * 3_600_000).toISOString();
+
+  it("counts transports per status and what needs attention, from stored data only", async () => {
+    const w = await workspace();
+    const empty = await body(await api.call("/v1/transports/summary", w.as));
+    expect(empty).toMatchObject({
+      total: 0,
+      active: 0,
+      open: 0,
+      withoutCarrier: 0,
+      pickupsNext24Hours: 0,
+      deliveredLast7Days: 0,
+    });
+    expect((empty["byStatus"] as Json)["in_transit"]).toBe(0);
+
+    const stops = (start: string, end: string) =>
+      (transportInput(w)["stops"] as Json[]).map((stop, index) => ({
+        ...stop,
+        windowStart: index === 0 ? start : soon(48),
+        windowEnd: index === 0 ? end : soon(50),
+      }));
+    // 1: created, no carrier, pickup in 2 hours
+    await createTransport(w, { stops: stops(soon(2), soon(3)) });
+    // 2: planned, no carrier, pickup in 3 days
+    const planned = String((await createTransport(w, { stops: stops(soon(72), soon(73)) }))["id"]);
+    await setStatus(w, planned, "planned");
+    // 3: in transit with a carrier
+    const moving = String((await createTransport(w, { carrierId: w.carrierId }))["id"]);
+    for (const status of ["planned", "assigned", "confirmed", "in_transit"])
+      await setStatus(w, moving, status);
+    // 4: delivered now
+    const delivered = String((await createTransport(w, { carrierId: w.carrierId }))["id"]);
+    for (const status of ["planned", "assigned", "confirmed", "in_transit", "delivered"])
+      await setStatus(w, delivered, status);
+    // 5: cancelled
+    const cancelled = String((await createTransport(w))["id"]);
+    await setStatus(w, cancelled, "cancelled");
+
+    const summary = await body(await api.call("/v1/transports/summary", w.as));
+    expect(summary).toMatchObject({
+      total: 5,
+      open: 2,
+      active: 1,
+      withoutCarrier: 2,
+      pickupsNext24Hours: 1,
+      deliveredLast7Days: 1,
+    });
+    expect(summary["byStatus"]).toMatchObject({
+      created: 1,
+      planned: 1,
+      in_transit: 1,
+      delivered: 1,
+      cancelled: 1,
+      completed: 0,
+    });
+  });
+
+  it("does not count delivery events older than seven days", async () => {
+    const w = await workspace();
+    const id = String((await createTransport(w, { carrierId: w.carrierId }))["id"]);
+    for (const status of ["planned", "assigned", "confirmed", "in_transit", "delivered"])
+      await setStatus(w, id, status);
+    // The history is append-only, so age it through a copy of the row in a transaction-free way: insert an old event for another transport.
+    const old = String((await createTransport(w, { carrierId: w.carrierId }))["id"]);
+    await api.db.ownerPool.query(
+      "ALTER TABLE transport_event DISABLE TRIGGER transport_event_reject_row_change",
+    );
+    try {
+      for (const status of ["planned", "assigned", "confirmed", "in_transit", "delivered"])
+        await setStatus(w, old, status);
+      await api.db.ownerPool.query(
+        "UPDATE transport_event SET occurred_at = now() - interval '10 days' WHERE transport_id = $1 AND to_status = 'delivered'",
+        [old],
+      );
+    } finally {
+      await api.db.ownerPool.query(
+        "ALTER TABLE transport_event ENABLE TRIGGER transport_event_reject_row_change",
+      );
+    }
+    const summary = await body(await api.call("/v1/transports/summary", w.as));
+    expect(summary["deliveredLast7Days"]).toBe(1);
+  });
+
+  it("is limited to the caller's organization and to people who may read transports", async () => {
+    const a = await workspace();
+    const b = await workspace();
+    await createTransport(a);
+    expect((await body(await api.call("/v1/transports/summary", b.as)))["total"]).toBe(0);
+    const carrierUser = await workspace(["carrier_user"]);
+    expect((await api.call("/v1/transports/summary", carrierUser.as)).status).toBe(403);
+  });
+});

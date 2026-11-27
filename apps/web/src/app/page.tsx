@@ -1,17 +1,11 @@
-import { Truck } from "lucide-react";
 import { redirect } from "next/navigation";
-import {
-  Badge,
-  Card,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-  EmptyState,
-  PageHeader,
-} from "@loadlane/ui";
+import { Badge, Card, CardDescription, CardHeader, CardTitle, PageHeader } from "@loadlane/ui";
 import { AppShell } from "../components/app-shell";
+import { Dashboard, summarySchema } from "../components/dashboard";
 import { roleLabel } from "../components/members-table";
-import { NotConfiguredScreen, ProblemScreen, SignedOutScreen } from "../components/notices";
+import { NotConfiguredScreen, Notice, ProblemScreen, SignedOutScreen } from "../components/notices";
+import { apiRequest } from "../lib/api-client";
+import { getAuthDeps } from "../lib/deps";
 import { getViewer } from "../lib/viewer";
 
 // The page depends on the visitor's session cookie, so it is rendered for every request.
@@ -33,17 +27,38 @@ export default async function OverviewPage({
 
   const { viewer } = result;
   if (!viewer.active) redirect("/onboarding");
+  const canReadTransports = viewer.active.permissions.includes("transport:read");
+  const summary = canReadTransports
+    ? await apiRequest({
+        apiUrl: getAuthDeps().config.apiUrl,
+        accessToken: viewer.accessToken,
+        organizationId: viewer.active.id,
+        path: "/v1/transports/summary",
+        schema: summarySchema,
+      })
+    : undefined;
   const firstName = viewer.user.displayName.split(/\s+/)[0] ?? viewer.user.displayName;
 
   return (
     <AppShell viewer={{ ...viewer, active: viewer.active }}>
       <PageHeader title={`Welcome, ${firstName}`} description={viewer.active.name} />
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
-        <EmptyState
-          icon={<Truck aria-hidden="true" />}
-          title="No transports yet"
-          description="Transport management is not available yet. When it is, active, late and delivered transports will appear here."
-        />
+        <div>
+          {summary?.ok ? (
+            <Dashboard
+              summary={summary.data}
+              canManage={viewer.active.permissions.includes("transport:manage")}
+            />
+          ) : summary ? (
+            <Notice>
+              The numbers could not be loaded right now. Please try again in a moment.
+            </Notice>
+          ) : (
+            <Card className="p-5 text-sm text-muted-foreground">
+              Your roles do not include transports. Ask an administrator if you need them.
+            </Card>
+          )}
+        </div>
         <Card>
           <CardHeader>
             <CardTitle>Your access</CardTitle>

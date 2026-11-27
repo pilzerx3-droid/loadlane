@@ -15,3 +15,4 @@
 | [0011](0011-api-foundation.md)           | API foundation                                   | Accepted |
 | [0012](0012-web-shell-and-onboarding.md) | Web shell, organization switching and onboarding | Accepted |
 | [0013](0013-observability.md)            | Observability baseline                           | Accepted |
+| [0014](0014-transport-domain-model.md)   | Transport domain model (Phase 2)                 | Accepted |

@@ -195,3 +195,21 @@ export const importReportSchema = z.object({
 });
 
 export type ImportTransportsInput = z.output<typeof importTransportsSchema>;
+
+export const transportSummarySchema = z.object({
+  total: z.number().int(),
+  byStatus: z.record(statusSchema, z.number().int()).describe("Number of transports per status"),
+  active: z.number().int().describe("Assigned up to unloading: the freight is moving or about to"),
+  open: z.number().int().describe("Created or planned: still needs a carrier or a confirmation"),
+  withoutCarrier: z
+    .number()
+    .int()
+    .describe("Not cancelled, not delivered, and no carrier assigned"),
+  pickupsNext24Hours: z
+    .number()
+    .int()
+    .describe("Transports not yet loaded whose first pickup window starts within 24 hours"),
+  deliveredLast7Days: z.number().int().describe("Transports moved to delivered in the last 7 days"),
+});
+
+export type TransportSummary = z.infer<typeof transportSummarySchema>;
