@@ -15,7 +15,9 @@ export interface ApiConfig {
 
 const LOCAL_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]"]);
 
+// zod runs refinements even when z.url() already failed, so the refinement must cope with any string.
 const issuerSchema = z.url().refine((value) => {
+  if (!URL.canParse(value)) return false;
   const url = new URL(value);
   return url.protocol === "https:" || (url.protocol === "http:" && LOCAL_HOSTS.has(url.hostname));
 }, "must be an https URL (http is only allowed for localhost)");

@@ -25,6 +25,15 @@ describe("loadApiConfig", () => {
     });
   });
 
+  it.each(["not-a-url", "", "https//missing-colon.example.com", "ftp://idp.example.com"])(
+    "reports an unusable issuer %j as a configuration problem, not as a crash",
+    (issuer) => {
+      expect(() => loadApiConfig({ ...valid, OIDC_ISSUER: issuer })).toThrow(
+        /Invalid API configuration[\s\S]*OIDC_ISSUER/,
+      );
+    },
+  );
+
   it("allows an http issuer for localhost only", () => {
     expect(() => loadApiConfig({ ...valid, OIDC_ISSUER: "http://127.0.0.1:9000" })).not.toThrow();
     expect(() => loadApiConfig({ ...valid, OIDC_ISSUER: "http://idp.example.com" })).toThrow(

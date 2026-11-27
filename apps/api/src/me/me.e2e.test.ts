@@ -192,13 +192,16 @@ describe("first sign-in", () => {
     });
     const response = await callMe(await issuer.sign({ subject }));
     expect(response.status).toBe(403);
+    expect(await response.json()).toMatchObject({ code: "email_not_verified" });
     expect(await countUsersWithIdentity(subject)).toBe(0);
   });
 
   it("refuses a person for whom the provider sends no e-mail address", async () => {
     const subject = `no-email-${randomUUID()}`;
     issuer.setUserInfo(subject, { sub: subject });
-    expect((await callMe(await issuer.sign({ subject }))).status).toBe(403);
+    const response = await callMe(await issuer.sign({ subject }));
+    expect(response.status).toBe(403);
+    expect(await response.json()).toMatchObject({ code: "email_not_verified" });
     expect(await countUsersWithIdentity(subject)).toBe(0);
   });
 
@@ -215,6 +218,7 @@ describe("first sign-in", () => {
     const response = await callMe(await issuer.sign({ subject }));
 
     expect(response.status).toBe(409);
+    expect(await response.json()).toMatchObject({ code: "email_in_use" });
     expect(await countUsersWithIdentity(subject)).toBe(0);
   });
 
@@ -238,7 +242,9 @@ describe("existing accounts", () => {
     const person = await newVerifiedPerson("deactivated");
     const me = await signIn(person);
     await asOwner("UPDATE app_user SET deactivated_at = now() WHERE id = $1", [me.user.id]);
-    expect((await callMe(person.token)).status).toBe(403);
+    const response = await callMe(person.token);
+    expect(response.status).toBe(403);
+    expect(await response.json()).toMatchObject({ code: "account_disabled" });
   });
 
   it("lists active memberships of the person, and only theirs", async () => {

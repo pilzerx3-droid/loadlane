@@ -80,9 +80,29 @@ export class AuthGuard implements CanActivate {
       );
       return new ServiceUnavailableException("The sign-in provider is not reachable");
     }
-    if (error instanceof EmailNotVerifiedError) return new ForbiddenException(error.message);
-    if (error instanceof UserDeactivatedError) return new ForbiddenException(error.message);
-    if (error instanceof EmailAlreadyRegisteredError) return new ConflictException(error.message);
+    // `code` is for programs (the web app maps it to a message), `message` is for people reading logs.
+    // P1-08 replaces this with the API-wide error format.
+    if (error instanceof EmailNotVerifiedError) {
+      return new ForbiddenException({
+        statusCode: 403,
+        code: "email_not_verified",
+        message: error.message,
+      });
+    }
+    if (error instanceof UserDeactivatedError) {
+      return new ForbiddenException({
+        statusCode: 403,
+        code: "account_disabled",
+        message: error.message,
+      });
+    }
+    if (error instanceof EmailAlreadyRegisteredError) {
+      return new ConflictException({
+        statusCode: 409,
+        code: "email_in_use",
+        message: error.message,
+      });
+    }
     this.logger.error(
       "Unexpected error while authenticating",
       error instanceof Error ? error.stack : String(error),
