@@ -12,6 +12,7 @@ export const summarySchema = z.object({
   withoutCarrier: z.number(),
   pickupsNext24Hours: z.number(),
   deliveredLast7Days: z.number(),
+  withoutPosition: z.number(),
 });
 
 export type Summary = z.infer<typeof summarySchema>;
@@ -97,6 +98,11 @@ export function Dashboard({ summary, canManage }: { summary: Summary; canManage:
           hint="First stop, not on the road yet"
         />
         <Stat label="Delivered, last 7 days" value={summary.deliveredLast7Days} />
+        <Stat
+          label="On the road, no position"
+          value={summary.withoutPosition}
+          hint="Loading up to unloading, nothing shared by a driver yet"
+        />
       </div>
       <Card className="p-5">
         <CardHeader>
@@ -115,8 +121,9 @@ export function Dashboard({ summary, canManage }: { summary: Summary; canManage:
         </ul>
       </Card>
       <Card className="p-4 text-sm text-muted-foreground">
-        Late transports and positions are not shown yet: they need driver tracking and ETA, which
-        come in later phases. Loadlane does not estimate them.
+        Late transports are not shown yet: they need an ETA, which comes in a later phase. Positions
+        shown in Loadlane come only from drivers who agreed to share them. Loadlane does not
+        estimate either.
       </Card>
     </div>
   );

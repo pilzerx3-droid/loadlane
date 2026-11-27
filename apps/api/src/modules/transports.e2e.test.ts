@@ -541,6 +541,7 @@ describe("summary", () => {
       withoutCarrier: 0,
       pickupsNext24Hours: 0,
       deliveredLast7Days: 0,
+      withoutPosition: 0,
     });
     expect((empty["byStatus"] as Json)["in_transit"]).toBe(0);
 
@@ -575,6 +576,8 @@ describe("summary", () => {
       withoutCarrier: 2,
       pickupsNext24Hours: 1,
       deliveredLast7Days: 1,
+      // The transport on the road has no driver position, and Loadlane does not invent one.
+      withoutPosition: 1,
     });
     expect(summary["byStatus"]).toMatchObject({
       created: 1,

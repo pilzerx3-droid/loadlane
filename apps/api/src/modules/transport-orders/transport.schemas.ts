@@ -128,6 +128,17 @@ export const transportDetailSchema = z.object({
   notes: z.string().nullable(),
   createdAt: z.iso.datetime(),
   updatedAt: z.iso.datetime(),
+  lastPosition: z
+    .object({
+      latitude: z.number(),
+      longitude: z.number(),
+      accuracyM: z.number().nullable(),
+      lowQuality: z.boolean(),
+      recordedAt: z.iso.datetime().describe("When the device took the reading"),
+      receivedAt: z.iso.datetime().describe("When Loadlane received it"),
+    })
+    .nullable()
+    .describe("The newest position a driver shared, or null. Never estimated."),
   stops: z.array(
     z.object({
       id: z.uuid(),
@@ -210,6 +221,10 @@ export const transportSummarySchema = z.object({
     .int()
     .describe("Transports not yet loaded whose first pickup window starts within 24 hours"),
   deliveredLast7Days: z.number().int().describe("Transports moved to delivered in the last 7 days"),
+  withoutPosition: z
+    .number()
+    .int()
+    .describe("Loading up to unloading, and no driver position received yet"),
 });
 
 export type TransportSummary = z.infer<typeof transportSummarySchema>;

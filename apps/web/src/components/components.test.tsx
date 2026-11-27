@@ -299,6 +299,7 @@ describe("Dashboard", () => {
     withoutCarrier: 5,
     pickupsNext24Hours: 2,
     deliveredLast7Days: 3,
+    withoutPosition: 1,
   };
 
   it("shows the counts and links to the matching list", () => {
@@ -316,9 +317,10 @@ describe("Dashboard", () => {
     expect(markup).toContain("Cancelled");
   });
 
-  it("is honest about what it does not know yet: no late or position counts", () => {
+  it("counts transports on the road without a position and does not estimate late ones", () => {
     const markup = html(<Dashboard summary={summary} canManage />);
-    expect(markup).toContain("does not estimate");
+    expect(markup).toContain("On the road, no position");
+    expect(markup).toContain("does not");
     expect(markup).not.toContain("Late transports</p>");
   });
 

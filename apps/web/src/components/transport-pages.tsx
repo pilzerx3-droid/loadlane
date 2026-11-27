@@ -19,6 +19,7 @@ import { requireOrganizationPage, type ActiveViewer } from "../lib/viewer";
 import { AppShell } from "./app-shell";
 import { DocumentsCard } from "./documents-card";
 import { DriverLinksCard } from "./driver-links-card";
+import { LastPositionCard } from "./last-position-card";
 import { ForbiddenNotice, Notice } from "./notices";
 import { TransportForm, type Option } from "./transport-form";
 import { TransportImportForm } from "./transport-import-form";
@@ -282,6 +283,9 @@ export async function TransportDetailPage({ id, problem }: { id: string; problem
         </div>
       ) : null}
       <TransportDetailView transport={transport} canManage={canManage} />
+      <div className="mt-5">
+        <LastPositionCard position={transport.lastPosition} timeZone={timeZone} now={new Date()} />
+      </div>
       {documents?.ok ? (
         <div className="mt-5">
           <DocumentsCard

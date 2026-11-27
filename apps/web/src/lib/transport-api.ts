@@ -48,6 +48,16 @@ export const transportDetailSchema = z.object({
   notes: z.string().nullable(),
   createdAt: z.string(),
   updatedAt: z.string(),
+  lastPosition: z
+    .object({
+      latitude: z.number(),
+      longitude: z.number(),
+      accuracyM: z.number().nullable(),
+      lowQuality: z.boolean(),
+      recordedAt: z.string(),
+      receivedAt: z.string(),
+    })
+    .nullable(),
   stops: z.array(
     z.object({
       id: z.string(),

@@ -151,6 +151,29 @@ describe("Driver Link access", () => {
     expect(last).toHaveLength(1);
   });
 
+  it("shows the last position to dispatchers and counts transports on the road without one", async () => {
+    const s = await scenario();
+    await driver(s.token, "consent", agree);
+    await driver(s.token, "status", { status: "in_transit" });
+
+    const before = await body(await api.call(`/v1/transports/${s.transportId}`, s.as));
+    expect(before["lastPosition"]).toBeNull();
+    const countBefore = await body(await api.call("/v1/transports/summary", s.as));
+    expect(countBefore["withoutPosition"]).toBe(1);
+
+    const recordedAt = new Date(Date.now() - 90_000).toISOString();
+    await driver(s.token, "position", reading({ latitude: 33.1, longitude: -97.2, recordedAt }));
+    const after = await body(await api.call(`/v1/transports/${s.transportId}`, s.as));
+    expect(after["lastPosition"]).toMatchObject({
+      latitude: 33.1,
+      longitude: -97.2,
+      lowQuality: false,
+      recordedAt,
+    });
+    const countAfter = await body(await api.call("/v1/transports/summary", s.as));
+    expect(countAfter["withoutPosition"]).toBe(0);
+  });
+
   it("keeps repeating consent harmless and lets the driver stop sharing", async () => {
     const s = await scenario();
     await driver(s.token, "consent", agree);

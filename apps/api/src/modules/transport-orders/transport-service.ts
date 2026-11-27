@@ -147,6 +147,7 @@ export class TransportService {
         without_carrier: number;
         pickups: number;
         delivered: number;
+        without_position: number;
       }>(
         `SELECT
            (SELECT count(*)::int FROM transport WHERE carrier_id IS NULL AND status NOT IN ('cancelled', 'delivered', 'completed')) AS without_carrier,
@@ -154,7 +155,10 @@ export class TransportService {
               WHERE t.status IN ('created', 'planned', 'assigned', 'confirmed')
                 AND s.window_start >= now() AND s.window_start < now() + interval '24 hours') AS pickups,
            (SELECT count(*)::int FROM transport_event
-              WHERE to_status = 'delivered' AND occurred_at >= now() - interval '7 days') AS delivered`,
+              WHERE to_status = 'delivered' AND occurred_at >= now() - interval '7 days') AS delivered,
+           (SELECT count(*)::int FROM transport t
+              WHERE t.status IN ('loading', 'in_transit', 'at_destination', 'unloading')
+                AND NOT EXISTS (SELECT 1 FROM last_position p WHERE p.transport_id = t.id)) AS without_position`,
       );
       const counts = Object.fromEntries(TRANSPORT_STATUSES.map((status) => [status, 0])) as Record<
         TransportStatus,
@@ -179,6 +183,7 @@ export class TransportService {
         withoutCarrier: row?.without_carrier ?? 0,
         pickupsNext24Hours: row?.pickups ?? 0,
         deliveredLast7Days: row?.delivered ?? 0,
+        withoutPosition: row?.without_position ?? 0,
       };
     });
   }
@@ -439,6 +444,12 @@ export class TransportService {
        WHERE e.transport_id = $1 ORDER BY e.occurred_at DESC, e.id DESC`,
       [id],
     );
+    const position = await client.query<Row>(
+      `SELECT latitude, longitude, accuracy_m, low_quality, recorded_at, received_at
+       FROM last_position WHERE transport_id = $1`,
+      [id],
+    );
+    const last = position.rows[0];
     const status = row["status"] as TransportStatus;
     return {
       id: row["id"] as string,
@@ -459,6 +470,16 @@ export class TransportService {
       notes: row["notes"] as string | null,
       createdAt: (row["created_at"] as Date).toISOString(),
       updatedAt: (row["updated_at"] as Date).toISOString(),
+      lastPosition: last
+        ? {
+            latitude: last["latitude"] as number,
+            longitude: last["longitude"] as number,
+            accuracyM: last["accuracy_m"] as number | null,
+            lowQuality: last["low_quality"] as boolean,
+            recordedAt: (last["recorded_at"] as Date).toISOString(),
+            receivedAt: (last["received_at"] as Date).toISOString(),
+          }
+        : null,
       stops: stops.rows.map((stop) => ({
         id: stop["id"] as string,
         sequence: stop["sequence"] as number,
