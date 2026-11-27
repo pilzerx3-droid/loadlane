@@ -1,6 +1,6 @@
 # ADR 0003: Auth hosted oidc
 
-Status: Accepted. The product owner chose ZITADEL Cloud (US region) on 2026-11-27. Not yet verified against a live instance; this ADR is updated when that has been done.
+Status: Accepted. The product owner chose ZITADEL Cloud (US region) on 2026-11-27. Sign-in verified against a live instance on the same day, see "Implementation status".
 
 ## Decision so far
 
@@ -53,7 +53,13 @@ Facts were read on 2026-11-27 from the providers' official pages only (docs, pri
 
 - Built: `TokenVerifier` with a jose implementation, discovery and key set handling, first-sign-in registration, `GET /v1/me`, web login, callback, logout, session renewal.
 - Tested against a local stand-in for the provider and the real database (see docs/dev-setup-zitadel.md, "What was tested").
-- **Not yet verified against a live ZITADEL instance.** Open items to confirm there: access tokens are JWTs, `aud` contains the project id, userinfo returns `email_verified`, the end-session redirect works. This section is updated when someone has signed in once.
+- **Verified against a live ZITADEL Cloud instance (US region, 2026-11-27)** with one manually created test user, signing in through the browser:
+  - Discovery document, PKCE (S256) and the authorization redirect work with our configuration.
+  - The access token is a JWT that our verifier accepts, so the token type setting and `aud` (project id as `OIDC_AUDIENCE`) are right.
+  - The userinfo endpoint returned the e-mail address with `email_verified`, and the first sign-in registered exactly one `app_user` row with issuer and subject. The id is a UUID v7.
+  - A page reload keeps the session without creating a second user.
+  - Sign out removes the server-side session and returns to the registered post-logout URI. ZITADEL afterwards shows its account chooser with the test user, so the browser's account is remembered there; whether the password is asked again was not checked.
+- **Not yet verified:** renewing an expired access token with the refresh token, MFA, enterprise SSO connections, sign-in with an unverified e-mail address, and whether the free plan asks for payment details (unknown). The local stand-in tests cover our handling of these cases, the provider's behavior is untested.
 
 ## Open questions
 
