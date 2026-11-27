@@ -88,15 +88,22 @@ export function Pagination({
   pageSize,
   total,
   path,
+  query = {},
 }: {
   page: number;
   pageSize: number;
   total: number;
   path: string;
+  /** Other query parameters to keep on the links, for example a search text. */
+  query?: Record<string, string>;
 }) {
   const pages = Math.max(1, Math.ceil(total / pageSize));
   if (pages <= 1) return null;
-  const link = (target: number) => `${path}?page=${target}`;
+  const link = (target: number) => {
+    const params = new URLSearchParams(query);
+    params.set("page", String(target));
+    return `${path}?${params.toString()}`;
+  };
   const linkClass =
     "rounded-control border border-border px-3 py-1.5 text-sm hover:border-muted-foreground";
   return (

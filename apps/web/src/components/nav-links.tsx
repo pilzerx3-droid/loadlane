@@ -1,12 +1,23 @@
 "use client";
 
-import { LayoutDashboard, Settings, Users, type LucideIcon } from "lucide-react";
+import {
+  Building2,
+  LayoutDashboard,
+  MapPin,
+  Settings,
+  Truck,
+  Users,
+  type LucideIcon,
+} from "lucide-react";
 import { usePathname } from "next/navigation";
 import { cn } from "@loadlane/ui";
 import { isActive, type NavIcon, type NavItem } from "../lib/navigation";
 
 const ICONS: Record<NavIcon, LucideIcon> = {
   overview: LayoutDashboard,
+  customers: Building2,
+  carriers: Truck,
+  locations: MapPin,
   members: Users,
   settings: Settings,
 };

@@ -115,6 +115,8 @@ export async function apiRequest<S extends z.ZodType>(options: {
   schema: S;
   organizationId?: string;
   json?: unknown;
+  /** Default: GET, or POST when `json` is given. */
+  method?: "GET" | "POST" | "PATCH";
   fetchFn?: typeof fetch;
 }): Promise<ApiResult<z.output<S>>> {
   const fetchFn = options.fetchFn ?? fetch;
@@ -128,7 +130,7 @@ export async function apiRequest<S extends z.ZodType>(options: {
   let response: Response;
   try {
     response = await fetchFn(`${options.apiUrl}${options.path}`, {
-      method: options.json === undefined ? "GET" : "POST",
+      method: options.method ?? (options.json === undefined ? "GET" : "POST"),
       headers,
       ...(options.json === undefined ? {} : { body: JSON.stringify(options.json) }),
       cache: "no-store",

@@ -18,6 +18,16 @@ describe("navigationFor", () => {
     ]);
   });
 
+  it("shows the master data pages the permissions allow", () => {
+    expect(labels(["customer:read", "location:read"])).toEqual([
+      "Overview",
+      "Customers",
+      "Locations",
+    ]);
+    expect(labels(["carrier:read"])).toEqual(["Overview", "Carriers"]);
+    expect(labels(["customer:manage"])).toEqual(["Overview"]);
+  });
+
   it("ignores permissions it does not know", () => {
     expect(labels(["spot:award", "nonsense"])).toEqual(["Overview"]);
   });
@@ -35,7 +45,14 @@ describe("navigationFor", () => {
   });
 
   it("lists only pages that exist", () => {
-    expect(NAV_ITEMS.map((item) => item.href)).toEqual(["/", "/members", "/settings"]);
+    expect(NAV_ITEMS.map((item) => item.href)).toEqual([
+      "/",
+      "/customers",
+      "/carriers",
+      "/locations",
+      "/members",
+      "/settings",
+    ]);
   });
 });
 

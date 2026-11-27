@@ -1,5 +1,7 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
+import { MASTER_DATA } from "../lib/master-data";
+import { MasterDataList } from "./master-data-list";
 import { MembersTable, Pagination, roleLabel } from "./members-table";
 import { describeOrganization, OrganizationDetails } from "./organization-details";
 import {
@@ -163,5 +165,63 @@ describe("screens and notices", () => {
     const markup = html(<ForbiddenNotice />);
     expect(markup).toContain("do not have access");
     expect(markup).toContain("<h1");
+  });
+});
+
+describe("MasterDataList", () => {
+  const config = MASTER_DATA.customers;
+  const base = {
+    config,
+    total: 0,
+    page: 1,
+    pageSize: 25,
+    q: "",
+    includeArchived: false,
+    canManage: true,
+  };
+
+  it("invites a manager to add the first record", () => {
+    const markup = html(<MasterDataList {...base} records={[]} />);
+    expect(markup).toContain("No customers yet");
+    expect(markup).toContain('href="/customers/new"');
+  });
+
+  it("does not offer to add when the person cannot manage", () => {
+    const markup = html(<MasterDataList {...base} records={[]} canManage={false} />);
+    expect(markup).not.toContain("/customers/new");
+  });
+
+  it("says nothing matched instead of 'no records yet' when filtered", () => {
+    const markup = html(<MasterDataList {...base} records={[]} q="zzz" />);
+    expect(markup).toContain("No customers match");
+    expect(markup).not.toContain("/customers/new");
+  });
+
+  it("links each record to its page and marks archived ones", () => {
+    const records = [
+      { id: "a1", name: "Acme", contactName: "Pat", contactEmail: null, archivedAt: null },
+      {
+        id: "b2",
+        name: "Old Co",
+        contactName: null,
+        contactEmail: "x@y.z",
+        archivedAt: "2026-01-01",
+      },
+    ];
+    const markup = html(<MasterDataList {...base} records={records} total={2} />);
+    expect(markup).toContain('href="/customers/a1"');
+    expect(markup).toContain("Acme");
+    expect(markup).toContain("–");
+    expect(markup.match(/Archived/g)).toHaveLength(1);
+  });
+
+  it("keeps the search text in the page links", () => {
+    const records = [{ id: "a1", name: "Acme" }];
+    const markup = html(
+      <MasterDataList {...base} records={records} total={60} q="ac" includeArchived />,
+    );
+    expect(markup).toContain("page=2");
+    expect(markup).toContain("q=ac");
+    expect(markup).toContain("archived=1");
   });
 });
