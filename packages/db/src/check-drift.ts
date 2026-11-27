@@ -3,24 +3,28 @@
 // 2. `drizzle-kit generate` must not produce a new migration; if it does, the schema has
 //    changes without a committed migration. The generated files are left in place for review.
 import { spawnSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
 
-function run(command: string, args: string[]): { status: number; stdout: string } {
-  const result = spawnSync(command, args, {
-    encoding: "utf8",
-    shell: process.platform === "win32",
-  });
+// Run drizzle-kit's CLI with the current Node binary: no shell needed, works the same on all OSes.
+// bin.cjs is not in the package's "exports", so it is addressed by path.
+const DRIZZLE_KIT_BIN = fileURLToPath(
+  new URL("../node_modules/drizzle-kit/bin.cjs", import.meta.url),
+);
+
+function drizzleKit(args: string[]): { status: number } {
+  const result = spawnSync(process.execPath, [DRIZZLE_KIT_BIN, ...args], { encoding: "utf8" });
   if (result.stdout) process.stdout.write(result.stdout);
   if (result.stderr) process.stderr.write(result.stderr);
-  return { status: result.status ?? 1, stdout: result.stdout ?? "" };
+  return { status: result.status ?? 1 };
 }
 
-const check = run("pnpm", ["exec", "drizzle-kit", "check"]);
+const check = drizzleKit(["check"]);
 if (check.status !== 0) {
   console.error("\nDrift check failed: drizzle-kit check reported problems.");
   process.exit(1);
 }
 
-const generate = run("pnpm", ["exec", "drizzle-kit", "generate", "--name=drift_check"]);
+const generate = drizzleKit(["generate", "--name=drift_check"]);
 if (generate.status !== 0) {
   console.error("\nDrift check failed: drizzle-kit generate did not run cleanly.");
   process.exit(1);
