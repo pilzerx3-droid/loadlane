@@ -1,6 +1,6 @@
 # ADR 0012: Web shell, organization switching and onboarding
 
-Status: accepted (P1-09)
+Status: Accepted (implemented in backlog P1-09)
 
 ## Context
 

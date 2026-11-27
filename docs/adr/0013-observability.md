@@ -1,6 +1,6 @@
 # ADR 0013: Observability baseline
 
-Status: accepted (P1-10)
+Status: Accepted (implemented in backlog P1-10)
 
 ## Context
 
@@ -19,4 +19,4 @@ We need to see what the API does, locally now and in production later, without l
 ## Consequences
 
 - `@opentelemetry/api` is also a dependency of `packages/db`: `drizzle-orm` has it as an optional peer, and without it pnpm resolves two copies of drizzle with incompatible types.
-- Nothing has been tested against a real collector yet; only the console exporter path and an in-memory exporter are covered by tests.
+- Nothing has been tested against a real collector yet; only an in-memory exporter is covered by tests (neither the console nor the OTLP exporter has been exercised).
