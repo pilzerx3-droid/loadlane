@@ -243,6 +243,31 @@ export class CalculationService {
     );
   }
 
+  /**
+   * A new calculation from the stored input of an existing one, calculated again now. The original
+   * is untouched; the copy is its own frozen snapshot. Use it to try another price.
+   */
+  async duplicate(
+    context: CalculationContext,
+    id: string,
+    name: string | undefined,
+  ): Promise<CalculationDetail> {
+    const source = await withTenant(
+      this.pool,
+      { organizationId: context.organizationId, userId: context.userId },
+      async ({ client }) => {
+        const row = await client.query<Row>("SELECT name, input FROM calculation WHERE id = $1", [
+          id,
+        ]);
+        if (!row.rows[0]) throw new NotFoundException();
+        return row.rows[0];
+      },
+    );
+    const input = source["input"] as CreateCalculationInput;
+    const copyName = (name ?? `${String(source["name"])} (copy)`).slice(0, 120);
+    return this.create(context, { ...input, name: copyName });
+  }
+
   async get(context: CalculationContext, id: string): Promise<CalculationDetail> {
     return withTenant(
       this.pool,

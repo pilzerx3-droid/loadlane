@@ -1,6 +1,6 @@
 # Phase 5: Freight calculation and quotes
 
-Goal: costs in, price and margin out, frozen as snapshots (ADR 0007), then quotes that turn into transports. Decisions: markup, margin and contribution are never mixed (CLAUDE.md rule 6). Status: **done except variants comparison (P5-06)**.
+Goal: costs in, price and margin out, frozen as snapshots (ADR 0007), then quotes that turn into transports. Decisions: markup, margin and contribution are never mixed (CLAUDE.md rule 6). Status: **done**.
 
 | ID    | Task                        | Status | Notes                                                                                                                                                                                                                                                         |
 | ----- | --------------------------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -9,4 +9,4 @@ Goal: costs in, price and margin out, frozen as snapshots (ADR 0007), then quote
 | P5-03 | Calculator page             | Done   | `/calculations`, `/new` with live preview from the same engine, detail view with each line's basis.                                                                                                                                                           |
 | P5-04 | Tariffs (versioned)         | Done   | Price lists (sell per customer, buy per carrier) in immutable dated versions; rate x quantity with minimum charges; apply to a shipment; calculations record the exact versions used; pages and calculator fill. Real rates are entered by the product owner. |
 | P5-05 | Quotes and PDF              | Done   | Draft, sent, accepted, rejected, cancelled; price copied from the frozen calculation; validity date, expiry derived; customer PDF (no cost or margin); no automatic sending.                                                                                  |
-| P5-06 | Compare variants, duplicate | Open   | Side by side view; duplicate creates a new snapshot.                                                                                                                                                                                                          |
+| P5-06 | Compare variants, duplicate | Done   | Duplicate a calculation into a new frozen one; compare two to four side by side, best margin and contribution marked.                                                                                                                                         |

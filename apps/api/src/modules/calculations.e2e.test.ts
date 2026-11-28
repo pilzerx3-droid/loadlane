@@ -165,6 +165,85 @@ describe("POST /v1/calculations", () => {
   });
 });
 
+describe("POST /v1/calculations/:id/duplicate", () => {
+  it("copies the input into a new frozen snapshot and leaves the original alone", async () => {
+    const w = await workspace();
+    const original = await body(
+      await api.call("/v1/calculations", {
+        ...w.as,
+        json: { name: "Lane A", lines, pricing: { mode: "markup", rateBp: 1_500 } },
+      }),
+    );
+    const response = await api.call(`/v1/calculations/${String(original["id"])}/duplicate`, {
+      ...w.as,
+      json: {},
+    });
+    expect(response.status).toBe(201);
+    const copy = await body(response);
+    expect(copy["id"]).not.toBe(original["id"]);
+    expect(copy).toMatchObject({
+      name: "Lane A (copy)",
+      costCents: 90_000,
+      priceCents: 103_500,
+      pricingMode: "markup",
+    });
+    expect(copy["lines"]).toEqual(original["lines"]);
+    const named = await body(
+      await api.call(`/v1/calculations/${String(original["id"])}/duplicate`, {
+        ...w.as,
+        json: { name: "Lane A, margin" },
+      }),
+    );
+    expect(named["name"]).toBe("Lane A, margin");
+    expect(await body(await api.call(`/v1/calculations/${String(original["id"])}`, w.as))).toEqual(
+      original,
+    );
+    expect(((await body(await api.call("/v1/calculations", w.as)))["page"] as Json)["total"]).toBe(
+      3,
+    );
+  });
+
+  it("needs permission, an existing calculation of the same organization", async () => {
+    const a = await workspace();
+    const b = await workspace();
+    const made = await body(
+      await api.call("/v1/calculations", {
+        ...a.as,
+        json: { name: "x", lines, pricing: { mode: "markup", rateBp: 0 } },
+      }),
+    );
+    expect(
+      (await api.call(`/v1/calculations/${String(made["id"])}/duplicate`, { ...b.as, json: {} }))
+        .status,
+    ).toBe(404);
+    expect(
+      (
+        await api.call("/v1/calculations/11111111-1111-4111-8111-111111111111/duplicate", {
+          ...a.as,
+          json: {},
+        })
+      ).status,
+    ).toBe(404);
+    expect(
+      (
+        await api.call(`/v1/calculations/${String(made["id"])}/duplicate`, {
+          ...a.as,
+          json: { name: "" },
+        })
+      ).status,
+    ).toBe(400);
+    const carrierUser = await workspace("carrier_user");
+    expect(
+      (
+        await api.call(`/v1/calculations/${String(made["id"])}/duplicate`, {
+          ...carrierUser.as,
+          json: {},
+        })
+      ).status,
+    ).toBe(403);
+  });
+});
+
 describe("listing, permissions and isolation", () => {
   it("lists newest first with paging", async () => {
     const w = await workspace();

@@ -5,7 +5,9 @@ import {
   formatInZone,
   type CostKind,
 } from "@loadlane/shared";
+import { duplicateCalculationAction } from "../app/calculation-actions";
 import {
+  Button,
   Card,
   CardHeader,
   CardTitle,
@@ -50,40 +52,59 @@ export function CalculationsList({
     );
   }
   return (
-    <Card className="p-2 sm:p-4">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Name</TableHead>
-            <TableHead>Customer</TableHead>
-            <TableHead className="text-right">Cost</TableHead>
-            <TableHead className="text-right">Price</TableHead>
-            <TableHead className="text-right">Margin</TableHead>
-            <TableHead>Saved</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {items.map((item) => (
-            <TableRow key={item.id}>
-              <TableCell>
-                <a href={`/calculations/${item.id}`} className="font-medium hover:underline">
-                  {item.name}
-                </a>
-              </TableCell>
-              <TableCell>{item.customer?.name ?? "—"}</TableCell>
-              <TableCell className="text-right font-mono">{formatUsd(item.costCents)}</TableCell>
-              <TableCell className="text-right font-mono">{formatUsd(item.priceCents)}</TableCell>
-              <TableCell className="text-right font-mono">
-                {item.marginBp === null ? "n/a" : formatPercent(item.marginBp)}
-              </TableCell>
-              <TableCell className="text-muted-foreground">
-                {formatInZone(item.createdAt, timeZone)}
-              </TableCell>
+    <form method="get" action="/calculations/compare">
+      <Card className="p-2 sm:p-4">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>
+                <span className="sr-only">Compare</span>
+              </TableHead>
+              <TableHead>Name</TableHead>
+              <TableHead>Customer</TableHead>
+              <TableHead className="text-right">Cost</TableHead>
+              <TableHead className="text-right">Price</TableHead>
+              <TableHead className="text-right">Margin</TableHead>
+              <TableHead>Saved</TableHead>
             </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </Card>
+          </TableHeader>
+          <TableBody>
+            {items.map((item) => (
+              <TableRow key={item.id}>
+                <TableCell>
+                  <input
+                    type="checkbox"
+                    name="id"
+                    value={item.id}
+                    aria-label={`Compare ${item.name}`}
+                  />
+                </TableCell>
+                <TableCell>
+                  <a href={`/calculations/${item.id}`} className="font-medium hover:underline">
+                    {item.name}
+                  </a>
+                </TableCell>
+                <TableCell>{item.customer?.name ?? "—"}</TableCell>
+                <TableCell className="text-right font-mono">{formatUsd(item.costCents)}</TableCell>
+                <TableCell className="text-right font-mono">{formatUsd(item.priceCents)}</TableCell>
+                <TableCell className="text-right font-mono">
+                  {item.marginBp === null ? "n/a" : formatPercent(item.marginBp)}
+                </TableCell>
+                <TableCell className="text-muted-foreground">
+                  {formatInZone(item.createdAt, timeZone)}
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+        <div className="flex items-center gap-3 px-2 pt-3 text-sm">
+          <Button type="submit" variant="outline" size="sm">
+            Compare selected
+          </Button>
+          <span className="text-muted-foreground">Choose two to four calculations.</span>
+        </div>
+      </Card>
+    </form>
   );
 }
 
@@ -91,14 +112,23 @@ export function CalculationsList({
 export function CalculationDetailView({
   calculation,
   timeZone,
+  canManage = false,
 }: {
   calculation: CalculationDetail;
   timeZone: string;
+  canManage?: boolean;
 }) {
   const mode = calculation.pricingMode;
   return (
     <div className="space-y-5">
       <PriceSummary figures={calculation} />
+      {canManage ? (
+        <form action={duplicateCalculationAction.bind(null, calculation.id)}>
+          <Button type="submit" variant="outline" size="sm">
+            Duplicate to try another price
+          </Button>
+        </form>
+      ) : null}
       <Card className="p-5">
         <CardHeader>
           <CardTitle>Cost lines</CardTitle>

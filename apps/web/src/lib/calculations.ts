@@ -71,3 +71,35 @@ export async function saveCalculation(
   deps.log(`Saving a calculation failed with HTTP ${result.status} (${result.code})`);
   return { status: "unavailable" };
 }
+
+export type DuplicateResult =
+  | { status: "done"; id: string }
+  | { status: "invalid" | "forbidden" | "not_found" | "signed_out" | "unavailable" };
+
+/** Copies a calculation into a new frozen one so another price can be tried. */
+export async function duplicateCalculation(
+  sessionId: string | undefined,
+  id: string,
+  deps: AuthDeps,
+  fetchFn: typeof fetch = fetch,
+): Promise<DuplicateResult> {
+  const session = await loadSession(sessionId, deps);
+  if (!sessionId || !session) return { status: "signed_out" };
+  const organizationId = session.activeOrganizationId;
+  if (!organizationId) return { status: "forbidden" };
+  const result = await apiRequest({
+    apiUrl: deps.config.apiUrl,
+    accessToken: session.accessToken,
+    organizationId,
+    path: `/v1/calculations/${id}/duplicate`,
+    json: {},
+    schema: calculationDetailSchema,
+    fetchFn,
+  });
+  if (result.ok) return { status: "done", id: result.data.id };
+  if (result.status === 401) return { status: "signed_out" };
+  if (result.status === 403) return { status: "forbidden" };
+  if (result.status === 404) return { status: "not_found" };
+  if (result.status === 400) return { status: "invalid" };
+  return { status: "unavailable" };
+}

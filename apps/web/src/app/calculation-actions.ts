@@ -3,7 +3,7 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { buildCalculation, parseCalcPayload, type CalcFormErrors } from "../lib/calculation-form";
-import { saveCalculation } from "../lib/calculations";
+import { duplicateCalculation, saveCalculation } from "../lib/calculations";
 import { cookieNames } from "../lib/cookies";
 import { getAuthDeps } from "../lib/deps";
 
@@ -37,4 +37,19 @@ export async function saveCalculationAction(
   if (result.status === "saved") redirect(`/calculations/${result.id}`);
   if (result.status === "signed_out") redirect("/");
   return { payload, errors: {}, message: MESSAGES[result.status] };
+}
+
+/** Copies a calculation and opens the copy. A problem returns to the original with `?problem=`. */
+export async function duplicateCalculationAction(id: string): Promise<void> {
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id))
+    redirect("/calculations");
+  const deps = getAuthDeps();
+  const sessionId = (await cookies()).get(cookieNames(deps.config.secureCookies).session)?.value;
+  const result = await duplicateCalculation(sessionId, id, deps);
+  if (result.status === "signed_out") redirect("/");
+  redirect(
+    result.status === "done"
+      ? `/calculations/${result.id}`
+      : `/calculations/${id}?problem=${result.status}`,
+  );
 }

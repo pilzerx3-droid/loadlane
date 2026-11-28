@@ -331,6 +331,7 @@ describe("OpenAPI document", () => {
       "ApiKeyController.revoke",
       "AuditController.list",
       "CalculationController.create",
+      "CalculationController.duplicate",
       "CalculationController.get",
       "CalculationController.list",
       "CarrierController.create",

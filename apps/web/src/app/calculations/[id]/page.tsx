@@ -37,6 +37,7 @@ export default async function CalculationPage({ params }: { params: Promise<{ id
       content = (
         <CalculationDetailView
           calculation={result.data}
+          canManage={viewer.active.permissions.includes("calculation:manage")}
           timeZone={organization.ok ? organization.data.timezone : "UTC"}
         />
       );

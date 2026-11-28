@@ -10,6 +10,7 @@ import {
   calculationListQuerySchema,
   calculationListSchema,
   createCalculationSchema,
+  duplicateSchema,
   type CalculationDetail,
   type CalculationList,
 } from "./calculation.schemas.ts";
@@ -59,6 +60,24 @@ export class CalculationController {
     @Body(new ZodPipe(createCalculationSchema)) body: z.output<typeof createCalculationSchema>,
   ): Promise<CalculationDetail> {
     return this.service.create(contextOf(request), body);
+  }
+
+  @Post(":id/duplicate")
+  @HttpCode(201)
+  @RequirePermissions("calculation:manage")
+  @ApiRoute({
+    summary:
+      "Copy a calculation to try another price. The input is calculated again and saved as a new frozen snapshot; the original stays as it was.",
+    body: duplicateSchema,
+    response: calculationDetailSchema,
+    status: 201,
+  })
+  duplicate(
+    @Req() request: TenantRequest,
+    @Param("id", new ZodPipe(idParamSchema)) id: string,
+    @Body(new ZodPipe(duplicateSchema)) body: z.output<typeof duplicateSchema>,
+  ): Promise<CalculationDetail> {
+    return this.service.duplicate(contextOf(request), id, body.name);
   }
 
   @Get(":id")
