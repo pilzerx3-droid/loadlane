@@ -324,6 +324,32 @@ describe("Dashboard", () => {
     expect(markup).not.toContain("Late transports</p>");
   });
 
+  it("shows offers and quotes waiting for a decision only when the person may see them", () => {
+    const withCounts = html(
+      <Dashboard
+        summary={summary}
+        canManage
+        commercial={{
+          openOffers: 3,
+          offersWithBids: 2,
+          offersPastDeadline: 1,
+          quotesAwaitingAnswer: 4,
+          quotesExpired: 0,
+        }}
+      />,
+    );
+    expect(withCounts).toContain("Open spot offers");
+    expect(withCounts).toContain("2 with bids");
+    expect(withCounts).toContain("Offers past their deadline");
+    expect(withCounts).toContain("Quotes awaiting an answer");
+    const spotOnly = html(<Dashboard summary={summary} canManage commercial={{ openOffers: 1 }} />);
+    expect(spotOnly).toContain("Open spot offers");
+    expect(spotOnly).not.toContain("Quotes awaiting");
+    const none = html(<Dashboard summary={summary} canManage commercial={{}} />);
+    expect(none).not.toContain("Waiting for a decision");
+    expect(html(<Dashboard summary={summary} canManage />)).not.toContain("Open spot offers");
+  });
+
   it("shows an empty state instead of zeros when there are no transports", () => {
     const empty = { ...summary, total: 0, byStatus: {}, active: 0, open: 0 };
     expect(html(<Dashboard summary={empty} canManage />)).toContain("No transports yet");

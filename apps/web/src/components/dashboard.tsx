@@ -17,6 +17,15 @@ export const summarySchema = z.object({
 
 export type Summary = z.infer<typeof summarySchema>;
 
+/** Offers and quotes waiting for a decision. A field is undefined when the person may not see it. */
+export interface CommercialCounts {
+  openOffers?: number | undefined;
+  offersWithBids?: number | undefined;
+  offersPastDeadline?: number | undefined;
+  quotesAwaitingAnswer?: number | undefined;
+  quotesExpired?: number | undefined;
+}
+
 function Stat({
   label,
   value,
@@ -51,7 +60,15 @@ function Stat({
 }
 
 /** Counts from stored transports. Nothing here is estimated or simulated. */
-export function Dashboard({ summary, canManage }: { summary: Summary; canManage: boolean }) {
+export function Dashboard({
+  summary,
+  canManage,
+  commercial,
+}: {
+  summary: Summary;
+  canManage: boolean;
+  commercial?: CommercialCounts;
+}) {
   if (summary.total === 0) {
     return (
       <EmptyState
@@ -104,6 +121,43 @@ export function Dashboard({ summary, canManage }: { summary: Summary; canManage:
           hint="Loading up to unloading, nothing shared by a driver yet"
         />
       </div>
+      {commercial &&
+      (commercial.openOffers !== undefined || commercial.quotesAwaitingAnswer !== undefined) ? (
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4" aria-label="Waiting for a decision">
+          {commercial.openOffers !== undefined ? (
+            <Stat
+              label="Open spot offers"
+              value={commercial.openOffers}
+              href="/spot"
+              hint={`${commercial.offersWithBids ?? 0} with bids`}
+            />
+          ) : null}
+          {commercial.offersPastDeadline !== undefined ? (
+            <Stat
+              label="Offers past their deadline"
+              value={commercial.offersPastDeadline}
+              href="/spot"
+              hint="Still open: decide or cancel"
+            />
+          ) : null}
+          {commercial.quotesAwaitingAnswer !== undefined ? (
+            <Stat
+              label="Quotes awaiting an answer"
+              value={commercial.quotesAwaitingAnswer}
+              href="/quotes"
+              hint="Sent and still valid"
+            />
+          ) : null}
+          {commercial.quotesExpired !== undefined ? (
+            <Stat
+              label="Quotes expired"
+              value={commercial.quotesExpired}
+              href="/quotes"
+              hint="Sent, validity date passed"
+            />
+          ) : null}
+        </div>
+      ) : null}
       <Card className="p-5">
         <CardHeader>
           <CardTitle>All transports by status</CardTitle>

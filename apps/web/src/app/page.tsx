@@ -1,7 +1,9 @@
 import { redirect } from "next/navigation";
 import { Badge, Card, CardDescription, CardHeader, CardTitle, PageHeader } from "@loadlane/ui";
 import { AppShell } from "../components/app-shell";
-import { Dashboard, summarySchema } from "../components/dashboard";
+import { Dashboard, summarySchema, type CommercialCounts } from "../components/dashboard";
+import { quoteListSchema } from "../lib/quotes";
+import { tenderListSchema } from "../lib/spot";
 import { roleLabel } from "../components/members-table";
 import { NotConfiguredScreen, Notice, ProblemScreen, SignedOutScreen } from "../components/notices";
 import { apiRequest } from "../lib/api-client";
@@ -37,6 +39,43 @@ export default async function OverviewPage({
         schema: summarySchema,
       })
     : undefined;
+  // Offers and quotes that wait for a decision, only for people who may see them.
+  const apiBase = {
+    apiUrl: getAuthDeps().config.apiUrl,
+    accessToken: viewer.accessToken,
+    organizationId: viewer.active.id,
+  };
+  const [openOffers, sentQuotes] = await Promise.all([
+    viewer.active.permissions.includes("spot:read")
+      ? apiRequest({
+          ...apiBase,
+          path: "/v1/spot-tenders?status=open&limit=100",
+          schema: tenderListSchema,
+        })
+      : undefined,
+    viewer.active.permissions.includes("quote:read")
+      ? apiRequest({
+          ...apiBase,
+          path: "/v1/quotes?status=sent&limit=100",
+          schema: quoteListSchema,
+        })
+      : undefined,
+  ]);
+  const commercial: CommercialCounts = {
+    openOffers: openOffers?.ok ? openOffers.data.page.total : undefined,
+    offersPastDeadline: openOffers?.ok
+      ? openOffers.data.items.filter((item) => item.deadlinePassed).length
+      : undefined,
+    offersWithBids: openOffers?.ok
+      ? openOffers.data.items.filter((item) => item.liveBids > 0).length
+      : undefined,
+    quotesAwaitingAnswer: sentQuotes?.ok
+      ? sentQuotes.data.items.filter((item) => !item.expired).length
+      : undefined,
+    quotesExpired: sentQuotes?.ok
+      ? sentQuotes.data.items.filter((item) => item.expired).length
+      : undefined,
+  };
   const firstName = viewer.user.displayName.split(/\s+/)[0] ?? viewer.user.displayName;
 
   return (
@@ -47,6 +86,7 @@ export default async function OverviewPage({
           {summary?.ok ? (
             <Dashboard
               summary={summary.data}
+              commercial={commercial}
               canManage={viewer.active.permissions.includes("transport:manage")}
             />
           ) : summary ? (
