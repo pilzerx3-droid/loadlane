@@ -19,13 +19,15 @@ export function WebhooksView({ hooks }: { hooks: WebhookSummary[] }) {
         <CardTitle>Webhooks</CardTitle>
       </CardHeader>
       <p className="text-sm text-muted-foreground">
-        Loadlane calls your address with a signed message every time a transport changes status
-        (event <span className="font-mono">transport.status_changed</span>). The message has the
-        transport reference, your own id if it came through the API, and the old and new status: no
-        prices, drivers or positions. Failed calls are retried six times over about 15 hours. Verify
-        each call with the header <span className="font-mono">X-Loadlane-Signature</span>{" "}
-        (HMAC-SHA256 of the timestamp, a dot and the raw body, with your secret) and use the event
-        id to ignore repeats.
+        Loadlane calls your address with a signed message when a transport changes status (
+        <span className="font-mono">transport.status_changed</span>), a quote changes status (
+        <span className="font-mono">quote.status_changed</span>) or a spot offer is awarded or
+        cancelled (<span className="font-mono">spot.status_changed</span>). Each message has the
+        reference, the old and new status and, for transports, your own id if it came through the
+        API: no prices, names, drivers or positions. Failed calls are retried six times over about
+        15 hours. Verify each call with the header{" "}
+        <span className="font-mono">X-Loadlane-Signature</span> (HMAC-SHA256 of the timestamp, a dot
+        and the raw body, with your secret) and use the event id to ignore repeats.
       </p>
       {hooks.length === 0 ? (
         <p className="text-sm text-muted-foreground">No webhook yet.</p>
