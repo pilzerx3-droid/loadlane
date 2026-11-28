@@ -3,6 +3,7 @@ export type NavIcon =
   | "activity"
   | "alerts"
   | "calculator"
+  | "quotes"
   | "transports"
   | "customers"
   | "carriers"
@@ -33,6 +34,7 @@ export const NAV_ITEMS: readonly NavItem[] = [
     icon: "calculator",
     requires: "calculation:read",
   },
+  { href: "/quotes", label: "Quotes", icon: "quotes", requires: "quote:read" },
   { href: "/customers", label: "Customers", icon: "customers", requires: "customer:read" },
   { href: "/carriers", label: "Carriers", icon: "carriers", requires: "carrier:read" },
   { href: "/locations", label: "Locations", icon: "locations", requires: "location:read" },

@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { PageHeader } from "@loadlane/ui";
+import { Button, PageHeader } from "@loadlane/ui";
 import { AppShell } from "../../../components/app-shell";
 import { CalculationDetailView } from "../../../components/calculation-views";
 import { ForbiddenNotice, Notice } from "../../../components/notices";
@@ -53,9 +53,19 @@ export default async function CalculationPage({ params }: { params: Promise<{ id
       );
     }
   }
+  const canQuote = viewer.active.permissions.includes("quote:manage");
   return (
     <AppShell viewer={viewer}>
-      <PageHeader title={title} />
+      <PageHeader
+        title={title}
+        actions={
+          allowed && canQuote && title !== "Calculation" ? (
+            <Button asChild variant="outline">
+              <a href={`/quotes/new?calculation=${encodeURIComponent(id)}`}>Create quote</a>
+            </Button>
+          ) : undefined
+        }
+      />
       {content}
     </AppShell>
   );
