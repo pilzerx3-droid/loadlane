@@ -81,7 +81,7 @@ describe("OrsGeocodingProvider", () => {
     const request = seen[0];
     expect(request?.authorization).toBe("test-key-1234567890");
     const url = new URL(request?.url ?? "", baseUrl);
-    expect(url.pathname).toBe("/geocode/search");
+    expect(url.pathname).toBe("/pelias/v1/search");
     expect(url.searchParams.get("text")).toBe("1 Main St, Dallas, TX 75201");
     expect(url.searchParams.get("boundary.country")).toBe("US");
     expect(url.searchParams.get("size")).toBe("1");
@@ -153,7 +153,7 @@ describe("OrsRoutingProvider", () => {
     });
     const request = seen[0];
     expect(request?.method).toBe("POST");
-    expect(request?.url).toBe("/v2/directions/driving-hgv/geojson");
+    expect(request?.url).toBe("/openrouteservice/v2/directions/driving-hgv/geojson");
     expect(request?.authorization).toBe("test-key-1234567890");
     expect(JSON.parse(request?.body ?? "{}")).toEqual({
       coordinates: [

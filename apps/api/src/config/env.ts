@@ -70,7 +70,7 @@ const envSchema = z.object({
   OPENAPI_ENABLED: z.enum(["true", "false"]).optional(),
   MAX_ORGANIZATIONS_PER_USER: z.coerce.number().int().min(1).max(1000).default(3),
   ORS_API_KEY: z.string().min(10).optional(),
-  ORS_BASE_URL: z.url().default("https://api.openrouteservice.org"),
+  ORS_BASE_URL: z.url().default("https://api.heigit.org"),
   WEBHOOK_ENCRYPTION_KEY: z.string().optional(),
   WEBHOOK_ALLOW_PRIVATE_HOSTS: z.enum(["true", "false"]).default("false"),
   APP_URL: z.url().default("http://localhost:3000"),

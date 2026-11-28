@@ -30,3 +30,7 @@ Rules that follow from the non-negotiables:
 - The map page needs the CSP to allow the tile host (`connect-src`, `img-src`) and `worker-src blob:`.
 - Free tiers can change. Switching provider means changing an adapter or an environment variable, not the data model.
 - ORS free quotas limit ETA refresh frequency: ETAs are cached per transport and refreshed at most every few minutes.
+
+## Update 2026-11-28: new host
+
+The old host api.openrouteservice.org answers HTTP 410 since 2026-11-24. The adapters now use https://api.heigit.org (geocoding at /pelias/v1/search, directions at /openrouteservice/v2/directions/driving-hgv/geojson). An existing API key works there. Both adapters were run once against the live service (geocode of a Manhattan address, truck route Chicago to St. Louis) and returned plausible results; the automated tests still use a local stub.

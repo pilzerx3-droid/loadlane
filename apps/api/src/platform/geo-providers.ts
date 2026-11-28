@@ -53,7 +53,7 @@ export interface RoutingProvider {
 
 export interface OrsSettings {
   apiKey: string;
-  /** Default https://api.openrouteservice.org. Tests point it at a local stub. */
+  /** Default https://api.heigit.org. Tests point it at a local stub. */
   baseUrl: string;
 }
 
@@ -61,6 +61,10 @@ export interface OrsSettings {
 export const MIN_GEOCODE_CONFIDENCE = 0.6;
 
 const TIMEOUT_MS = 10_000;
+
+/** Paths on the HeiGIT host. api.openrouteservice.org was shut down (HTTP 410) on 2026-11-24. */
+export const GEOCODE_PATH = "/pelias/v1/search";
+export const DIRECTIONS_PATH = "/openrouteservice/v2/directions/driving-hgv/geojson";
 
 /** OpenRouteService: the geocoder (Pelias) and truck directions, with one API key. */
 export class OrsGeocodingProvider implements GeocodingProvider {
@@ -73,7 +77,7 @@ export class OrsGeocodingProvider implements GeocodingProvider {
 
   async geocode(query: GeocodeQuery): Promise<GeocodeResult | null> {
     const text = `${query.addressLine1}, ${query.city}, ${query.state} ${query.postalCode}`;
-    const url = new URL("/geocode/search", this.settings.baseUrl);
+    const url = new URL(GEOCODE_PATH, this.settings.baseUrl);
     url.searchParams.set("text", text);
     url.searchParams.set("boundary.country", "US");
     url.searchParams.set("size", "1");
@@ -115,7 +119,7 @@ export class OrsRoutingProvider implements RoutingProvider {
   ) {}
 
   async route(from: RoutePoint, to: RoutePoint): Promise<RouteResult> {
-    const url = new URL("/v2/directions/driving-hgv/geojson", this.settings.baseUrl);
+    const url = new URL(DIRECTIONS_PATH, this.settings.baseUrl);
     const response = await this.fetchFn(url, {
       method: "POST",
       headers: {
