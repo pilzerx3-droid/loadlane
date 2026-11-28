@@ -45,6 +45,8 @@ const TENANT_TABLES = [
   "external_ref",
   "mail_log",
   "eta_estimate",
+  "webhook_endpoint",
+  "webhook_delivery",
 ] as const;
 
 /** Tables in schema public that deliberately have no row-level security. */
@@ -164,6 +166,14 @@ async function seedOrganization(
     await c.query(
       "INSERT INTO eta_estimate (organization_id, transport_id, computed_at, based_on_recorded_at, from_latitude, from_longitude, distance_m, duration_s, eta_at, provider) VALUES ($1, $2, now(), now(), 32.7, -96.8, 386000, 14400, now() + interval '4 hours', 'openrouteservice')",
       [organizationId, transportRow.rows[0]?.id],
+    );
+    const endpointRow = await c.query<{ id: string }>(
+      "INSERT INTO webhook_endpoint (organization_id, url, secret_encrypted, events, created_by_user_id) VALUES ($1, 'https://hooks.example.com/in', 'x.y.z', ARRAY['transport.status_changed'], $2) RETURNING id",
+      [organizationId, adminUserId],
+    );
+    await c.query(
+      "INSERT INTO webhook_delivery (organization_id, endpoint_id, event_id, event_type, payload) VALUES ($1, $2, gen_random_uuid(), 'transport.status_changed', '{}')",
+      [organizationId, endpointRow.rows[0]?.id],
     );
     const tariffRow = await c.query<{ id: string }>(
       "INSERT INTO tariff (organization_id, name, kind, customer_id, created_by_user_id) VALUES ($1, 'Acme sell', 'sell', $2, $3) RETURNING id",
@@ -339,6 +349,16 @@ describe("tenant isolation", () => {
       [
         "eta_estimate",
         "INSERT INTO eta_estimate (organization_id, transport_id, computed_at, based_on_recorded_at, from_latitude, from_longitude, distance_m, duration_s, eta_at, provider) VALUES ($1, gen_random_uuid(), now(), now(), 1, 1, 1, 1, now(), 'openrouteservice')",
+        [orgB],
+      ],
+      [
+        "webhook_endpoint",
+        "INSERT INTO webhook_endpoint (organization_id, url, secret_encrypted, events, created_by_user_id) VALUES ($1, 'https://evil.example.com', 'x', ARRAY['transport.status_changed'], $2)",
+        [orgB, userA],
+      ],
+      [
+        "webhook_delivery",
+        "INSERT INTO webhook_delivery (organization_id, endpoint_id, event_id, event_type, payload) VALUES ($1, gen_random_uuid(), gen_random_uuid(), 'x', '{}')",
         [orgB],
       ],
       [
@@ -752,6 +772,39 @@ describe("tenant isolation", () => {
     );
   });
 
+  it("webhooks: endpoints are switched off not deleted, deliveries only change progress", async () => {
+    await expectPgError(
+      run({ organizationId: orgA }, (c) => c.query("DELETE FROM webhook_endpoint")),
+      "42501",
+    );
+    await expectPgError(
+      run({ organizationId: orgA }, (c) =>
+        c.query("UPDATE webhook_endpoint SET url = 'https://x.example.com'"),
+      ),
+      "42501",
+    );
+    await expectPgError(
+      run({ organizationId: orgA }, (c) => c.query("DELETE FROM webhook_delivery")),
+      "42501",
+    );
+    await expectPgError(
+      run({ organizationId: orgA }, (c) => c.query("UPDATE webhook_delivery SET payload = '{}'")),
+      "42501",
+    );
+    const progress = await run({ organizationId: orgA }, (c) =>
+      c.query("UPDATE webhook_delivery SET attempts = 1, status = 'pending'"),
+    );
+    expect(progress.rowCount).toBe(1);
+    const foreign = await run({ organizationId: orgA }, (c) =>
+      c.query("UPDATE webhook_delivery SET attempts = 9 WHERE organization_id = $1", [orgB]),
+    );
+    expect(foreign.rowCount).toBe(0);
+    await expectPgError(
+      run({ organizationId: orgA }, (c) => c.query("UPDATE webhook_delivery SET status = 'sent'")),
+      "23514",
+    );
+  });
+
   it("mail_log: append only, and an invalid status or address fails", async () => {
     await expectPgError(
       run({ organizationId: orgA }, (c) => c.query("UPDATE mail_log SET status = 'failed'")),
@@ -831,6 +884,8 @@ describe("tenant isolation", () => {
       "external_ref",
       "mail_log",
       "eta_estimate",
+      "webhook_endpoint",
+      "webhook_delivery",
     ]) {
       expect(await count({}, `FROM ${table}`), table).toBe(0);
     }

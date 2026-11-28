@@ -21,6 +21,7 @@ describe("loadApiConfig", () => {
       maxOrganizationsPerUser: 3,
       tracesExporter: "none",
       appUrl: "http://localhost:3000",
+      webhookAllowPrivate: false,
     });
   });
 

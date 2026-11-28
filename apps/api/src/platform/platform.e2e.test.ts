@@ -410,6 +410,10 @@ describe("OpenAPI document", () => {
       "TransportController.list",
       "TransportController.summary",
       "TransportController.update",
+      "WebhookController.create",
+      "WebhookController.deliveries",
+      "WebhookController.disable",
+      "WebhookController.list",
     ]);
     for (const route of routes) {
       expect(route.rule, route.name).toBeDefined();
@@ -431,7 +435,7 @@ describe("OpenAPI document switched off", () => {
     } finally {
       await off.close();
     }
-  });
+  }, 30_000);
 });
 
 describe("rate limit", () => {

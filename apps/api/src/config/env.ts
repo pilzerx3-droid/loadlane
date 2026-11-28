@@ -1,5 +1,6 @@
 import { existsSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
+import { parseEncryptionKey } from "@loadlane/db";
 import { z } from "zod";
 
 export interface ApiConfig {
@@ -28,6 +29,10 @@ export interface ApiConfig {
   mail?: { smtpUrl: string; from: string };
   /** OpenRouteService key for address lookup and routing (ADR 0021). Left out: both answer 503. */
   ors?: { apiKey: string; baseUrl: string };
+  /** Key that encrypts webhook signing secrets (ADR 0022). Left out: creating a webhook answers 503. */
+  webhookKey?: Buffer;
+  /** Development only: allow http and private addresses as webhook targets. */
+  webhookAllowPrivate: boolean;
   /** S3-compatible file storage. Left out when S3_ENDPOINT is not set; document uploads then answer 503. */
   s3?: {
     endpoint: string;
@@ -40,7 +45,9 @@ export interface ApiConfig {
 
 /** What the modules need at run time. Tests pass only the parts they use. */
 export type RuntimeConfig = Pick<ApiConfig, "oidcIssuer" | "oidcAudience"> &
-  Partial<Pick<ApiConfig, "maxOrganizationsPerUser" | "appUrl">>;
+  Partial<
+    Pick<ApiConfig, "maxOrganizationsPerUser" | "appUrl" | "webhookKey" | "webhookAllowPrivate">
+  >;
 
 const LOCAL_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]"]);
 
@@ -64,6 +71,8 @@ const envSchema = z.object({
   MAX_ORGANIZATIONS_PER_USER: z.coerce.number().int().min(1).max(1000).default(3),
   ORS_API_KEY: z.string().min(10).optional(),
   ORS_BASE_URL: z.url().default("https://api.openrouteservice.org"),
+  WEBHOOK_ENCRYPTION_KEY: z.string().optional(),
+  WEBHOOK_ALLOW_PRIVATE_HOSTS: z.enum(["true", "false"]).default("false"),
   APP_URL: z.url().default("http://localhost:3000"),
   MAIL_SMTP_URL: z
     .string()
@@ -107,6 +116,10 @@ export function loadApiConfig(env: Record<string, string | undefined>): ApiConfi
     tracesExporter: values.OTEL_TRACES_EXPORTER,
     ...(values.RATE_LIMIT_REDIS_URL ? { rateLimitRedisUrl: values.RATE_LIMIT_REDIS_URL } : {}),
     appUrl: values.APP_URL.replace(/\/+$/, ""),
+    webhookAllowPrivate: values.WEBHOOK_ALLOW_PRIVATE_HOSTS === "true",
+    ...(values.WEBHOOK_ENCRYPTION_KEY
+      ? { webhookKey: parseEncryptionKey(values.WEBHOOK_ENCRYPTION_KEY) ?? Buffer.alloc(0) }
+      : {}),
     ...mailSettings(values),
     ...(values.ORS_API_KEY
       ? { ors: { apiKey: values.ORS_API_KEY, baseUrl: values.ORS_BASE_URL } }

@@ -61,9 +61,10 @@ export interface TestApi {
 export async function startTestApi(
   overrides: Partial<Omit<AppModuleOptions, "config" | "pool">> & {
     maxOrganizationsPerUser?: number;
+    webhook?: { key: Buffer; allowPrivate: boolean };
   } = {},
 ): Promise<TestApi> {
-  const { maxOrganizationsPerUser, ...appOverrides } = overrides;
+  const { maxOrganizationsPerUser, webhook, ...appOverrides } = overrides;
   const db = await createTestDatabase();
   const issuer = await startFakeIssuer("project-123");
   const app: INestApplication = await createApp({
@@ -71,6 +72,7 @@ export async function startTestApi(
       oidcIssuer: issuer.issuer,
       oidcAudience: issuer.audience,
       ...(maxOrganizationsPerUser === undefined ? {} : { maxOrganizationsPerUser }),
+      ...(webhook ? { webhookKey: webhook.key, webhookAllowPrivate: webhook.allowPrivate } : {}),
     },
     pool: db.appPool,
     jwksCooldownMs: 0,
