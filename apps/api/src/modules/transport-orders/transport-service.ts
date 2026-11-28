@@ -1,6 +1,7 @@
 import { ConflictException, NotFoundException } from "@nestjs/common";
 import { withTenant } from "@loadlane/db";
 import {
+  alertConditions,
   canTransition,
   nextTransportStatuses,
   STATUSES_REQUIRING_CARRIER,
@@ -11,6 +12,7 @@ import type pg from "pg";
 import { ValidationFailedError, type FieldError } from "../../platform/validation.ts";
 import type {
   CreateTransportInput,
+  TransportAlert,
   TransportDetail,
   TransportListQuery,
   TransportSummary,
@@ -185,6 +187,49 @@ export class TransportService {
         deliveredLast7Days: row?.delivered ?? 0,
         withoutPosition: row?.without_position ?? 0,
       };
+    });
+  }
+
+  /** Transports with at least one alert condition. Evaluated now, from stored plan and positions only. */
+  async alerts(context: TransportContext): Promise<{ items: TransportAlert[] }> {
+    return withTenant(this.pool, this.tenant(context), async ({ client }) => {
+      const rows = await client.query<Row>(
+        `SELECT t.id, t.number, t.status, c.name AS customer_name, ca.name AS carrier_name,
+                (SELECT window_end FROM stop WHERE transport_id = t.id AND sequence = 1) AS first_pickup_end,
+                (SELECT window_end FROM stop WHERE transport_id = t.id ORDER BY sequence DESC LIMIT 1) AS last_delivery_end,
+                p.recorded_at AS last_position_at
+         FROM transport t
+         JOIN customer c ON c.id = t.customer_id
+         LEFT JOIN carrier ca ON ca.id = t.carrier_id
+         LEFT JOIN last_position p ON p.transport_id = t.id
+         WHERE t.status NOT IN ('delivered', 'completed', 'cancelled')
+         ORDER BY t.number DESC LIMIT 500`,
+      );
+      const now = new Date();
+      const items: TransportAlert[] = [];
+      for (const row of rows.rows) {
+        const status = row["status"] as TransportStatus;
+        const firstPickupEnd = row["first_pickup_end"] as Date;
+        const lastDeliveryEnd = row["last_delivery_end"] as Date;
+        const position = row["last_position_at"] as Date | null;
+        const conditions = alertConditions(
+          { status, firstPickupEnd, lastDeliveryEnd, lastPositionRecordedAt: position },
+          now,
+        );
+        if (conditions.length === 0) continue;
+        items.push({
+          id: row["id"] as string,
+          reference: transportReference(row["number"] as number),
+          status,
+          conditions,
+          customerName: row["customer_name"] as string,
+          carrierName: row["carrier_name"] as string | null,
+          firstPickupEnd: firstPickupEnd.toISOString(),
+          lastDeliveryEnd: lastDeliveryEnd.toISOString(),
+          lastPositionAt: position ? position.toISOString() : null,
+        });
+      }
+      return { items };
     });
   }
 

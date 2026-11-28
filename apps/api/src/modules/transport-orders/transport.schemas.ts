@@ -1,4 +1,4 @@
-import { TRANSPORT_STATUSES } from "@loadlane/shared";
+import { ALERT_CONDITIONS, TRANSPORT_STATUSES } from "@loadlane/shared";
 import { z } from "zod";
 import { optionalText } from "../../platform/directory-http.ts";
 
@@ -228,3 +228,20 @@ export const transportSummarySchema = z.object({
 });
 
 export type TransportSummary = z.infer<typeof transportSummarySchema>;
+
+export const alertListSchema = z.object({
+  items: z.array(
+    z.object({
+      id: z.uuid(),
+      reference: z.string(),
+      status: statusSchema,
+      conditions: z.array(z.enum(ALERT_CONDITIONS)).min(1),
+      customerName: z.string(),
+      carrierName: z.string().nullable(),
+      firstPickupEnd: z.iso.datetime(),
+      lastDeliveryEnd: z.iso.datetime(),
+      lastPositionAt: z.iso.datetime().nullable(),
+    }),
+  ),
+});
+export type TransportAlert = z.infer<typeof alertListSchema>["items"][number];

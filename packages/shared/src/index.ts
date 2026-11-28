@@ -21,6 +21,13 @@ export {
   type TransportStatus,
 } from "./transport-status.ts";
 export {
+  ALERT_CONDITIONS,
+  ALERT_LABELS,
+  alertConditions,
+  type AlertCondition,
+  type AlertInput,
+} from "./alerts.ts";
+export {
   CONSENT_COPY,
   CONSENT_TEXT_VERSION,
   DRIVER_REPORTABLE_STATUSES,

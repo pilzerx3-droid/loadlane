@@ -17,6 +17,8 @@ import { ApiRoute } from "../../platform/openapi.ts";
 import { requireTenant, type TenantRequest } from "../../platform/request-context.ts";
 import { ZodPipe } from "../../platform/validation.ts";
 import {
+  alertListSchema,
+  type TransportAlert,
   changeStatusSchema,
   createTransportSchema,
   importReportSchema,
@@ -72,6 +74,17 @@ export class TransportController {
   })
   summary(@Req() request: TenantRequest): Promise<TransportSummary> {
     return this.service.summary(contextOf(request));
+  }
+
+  @Get("alerts")
+  @RequirePermissions("transport:read")
+  @ApiRoute({
+    summary:
+      "Transports that need attention, derived from planned windows and received positions (no estimates)",
+    response: alertListSchema,
+  })
+  alerts(@Req() request: TenantRequest): Promise<{ items: TransportAlert[] }> {
+    return this.service.alerts(contextOf(request));
   }
 
   @Post("import")

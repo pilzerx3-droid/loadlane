@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  AlertTriangle,
   Building2,
   History,
   LayoutDashboard,
@@ -18,6 +19,7 @@ import { isActive, type NavIcon, type NavItem } from "../lib/navigation";
 const ICONS: Record<NavIcon, LucideIcon> = {
   overview: LayoutDashboard,
   activity: History,
+  alerts: AlertTriangle,
   transports: Package,
   customers: Building2,
   carriers: Truck,

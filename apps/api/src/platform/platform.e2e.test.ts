@@ -357,6 +357,7 @@ describe("OpenAPI document", () => {
       "OpenApiController.document",
       "OrganizationController.create",
       "OrganizationController.get",
+      "TransportController.alerts",
       "TransportController.changeStatus",
       "TransportController.create",
       "TransportController.get",
