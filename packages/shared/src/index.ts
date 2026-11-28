@@ -21,6 +21,17 @@ export {
   type TransportStatus,
 } from "./transport-status.ts";
 export {
+  COST_KINDS,
+  COST_KIND_LABELS,
+  calculate,
+  lineFromRate,
+  type CalculationInput,
+  type CalculationResult,
+  type CostKind,
+  type CostLine,
+  type PricingMethod,
+} from "./calculation.ts";
+export {
   MoneyError,
   analyzePrice,
   formatPercent,

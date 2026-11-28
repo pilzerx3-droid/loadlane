@@ -327,6 +327,9 @@ describe("OpenAPI document", () => {
     const routes = discoverRoutes(api.app.get(DiscoveryService), api.app.get(Reflector));
     expect(routes.map((route) => route.name).sort()).toEqual([
       "AuditController.list",
+      "CalculationController.create",
+      "CalculationController.get",
+      "CalculationController.list",
       "CarrierController.create",
       "CarrierController.get",
       "CarrierController.list",

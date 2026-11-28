@@ -1,6 +1,6 @@
 # ADR 0018: Hosted test environment, free first
 
-Status: **Proposed** (waiting for product owner approval). Number note: 0016 and 0017 were already taken by other decisions, so hosting is 0018.
+Status: **Deferred** (product owner, 2026-11-28): finishing the product comes first, no real customers yet. Hosting is approved up to 20 USD per month, but only once it clearly speeds up development; until then nothing is hosted. A phone test of the Driver Link (geolocation needs HTTPS) uses a free temporary tunnel to the developer machine instead. Number note: 0016 and 0017 were already taken by other decisions, so hosting is 0018.
 
 ## Context
 

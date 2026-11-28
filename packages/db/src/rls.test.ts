@@ -33,6 +33,7 @@ const TENANT_TABLES = [
   "position_event",
   "last_position",
   "tracking_link",
+  "calculation",
 ] as const;
 
 /** Tables in schema public that deliberately have no row-level security. */
@@ -119,6 +120,11 @@ async function seedOrganization(
     await c.query(
       "INSERT INTO driver_consent (organization_id, driver_link_id, text_version) VALUES ($1, $2, 1)",
       [organizationId, linkRow.rows[0]?.id],
+    );
+    await c.query(
+      `INSERT INTO calculation (organization_id, customer_id, name, engine_version, pricing_mode, input, result, cost_cents, price_cents, contribution_cents, markup_bp, margin_bp, created_by_user_id)
+       VALUES ($1, $2, 'Dallas to Houston', 1, 'markup', '{}', '{}', 90000, 103500, 13500, 1500, 1304, $3)`,
+      [organizationId, customerRow.rows[0]?.id, adminUserId],
     );
     await c.query(
       "INSERT INTO tracking_link (organization_id, transport_id, token_hash, expires_at, created_by_user_id) VALUES ($1, $2, $3, now() + interval '2 days', $4)",
@@ -247,6 +253,11 @@ describe("tenant isolation", () => {
       [
         "tracking_link",
         "INSERT INTO tracking_link (organization_id, transport_id, token_hash, expires_at, created_by_user_id) VALUES ($1, gen_random_uuid(), repeat('b', 64), now(), $2)",
+        [orgB, userA],
+      ],
+      [
+        "calculation",
+        "INSERT INTO calculation (organization_id, name, engine_version, pricing_mode, input, result, cost_cents, price_cents, contribution_cents, created_by_user_id) VALUES ($1, 'Forged', 1, 'price', '{}', '{}', 1, 1, 0, $2)",
         [orgB, userA],
       ],
       [
@@ -381,6 +392,27 @@ describe("tenant isolation", () => {
     expect(other.rowCount).toBe(0);
   });
 
+  it("calculation: a frozen snapshot that cannot be changed or removed, with consistent money", async () => {
+    await expectPgError(
+      run({ organizationId: orgA }, (c) => c.query("UPDATE calculation SET price_cents = 1")),
+      "42501",
+    );
+    await expectPgError(
+      run({ organizationId: orgA }, (c) => c.query("DELETE FROM calculation")),
+      "42501",
+    );
+    const insert = (cost: number, price: number, contribution: number) =>
+      run({ organizationId: orgA, userId: userA }, (c) =>
+        c.query(
+          "INSERT INTO calculation (organization_id, name, engine_version, pricing_mode, input, result, cost_cents, price_cents, contribution_cents, created_by_user_id) VALUES ($1, 'x', 1, 'price', '{}', '{}', $2, $3, $4, $5)",
+          [orgA, cost, price, contribution, userA],
+        ),
+      );
+    await expectPgError(insert(100, 150, 999), "23514"); // contribution must equal price - cost
+    await expectPgError(insert(-1, 10, 11), "23514"); // no negative amounts
+    await insert(100, 90, -10); // a price below cost is a valid, negative contribution
+  });
+
   it("position_event: cannot be updated, other organizations cannot delete, bad coordinates fail", async () => {
     await expectPgError(
       run({ organizationId: orgA }, (c) => c.query("UPDATE position_event SET latitude = 0")),
@@ -428,6 +460,7 @@ describe("tenant isolation", () => {
       "position_event",
       "last_position",
       "tracking_link",
+      "calculation",
     ]) {
       expect(await count({}, `FROM ${table}`), table).toBe(0);
     }
