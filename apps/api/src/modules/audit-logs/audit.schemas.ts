@@ -15,6 +15,7 @@ export const auditQuerySchema = z.object({
       "tracking_link",
       "calculation",
       "quote",
+      "spot_tender",
     ])
     .optional()
     .describe("Only entries about this kind of record"),

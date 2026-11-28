@@ -30,6 +30,8 @@ export const PERMISSIONS = [
   "calculation:manage",
   "quote:read",
   "quote:manage",
+  "spot:read",
+  "spot:manage",
 ] as const;
 export type Permission = (typeof PERMISSIONS)[number];
 
@@ -55,6 +57,8 @@ export const ROLE_PERMISSIONS: Readonly<Record<RoleKey, readonly Permission[]>> 
     "calculation:read",
     "calculation:manage",
     "quote:read",
+    "spot:read",
+    "spot:manage",
   ],
   sales: [
     "organization:read",
@@ -70,6 +74,7 @@ export const ROLE_PERMISSIONS: Readonly<Record<RoleKey, readonly Permission[]>> 
     "calculation:manage",
     "quote:read",
     "quote:manage",
+    "spot:read",
   ],
   carrier_user: ["organization:read"],
 };
