@@ -179,3 +179,68 @@ export function changeQuoteStatus(
 ): Promise<QuoteResult> {
   return call(sessionId, deps, `/v1/quotes/${id}/status`, { status }, "POST", fetchFn);
 }
+
+export type EmailQuoteResult =
+  | { status: "sent"; to: string }
+  | {
+      status:
+        | "send_failed"
+        | "mail_unconfigured"
+        | "not_sendable"
+        | "needs_address"
+        | "invalid_address"
+        | "forbidden"
+        | "not_found"
+        | "signed_out"
+        | "unavailable";
+    };
+
+const emailResultSchema = z.object({
+  to: z.string(),
+  status: z.enum(["sent", "failed"]),
+  errorCode: z.string().nullable(),
+});
+
+/** E-mails a sent quote as a PDF. An empty address means the customer contact stored in Loadlane. */
+export async function emailQuote(
+  sessionId: string | undefined,
+  id: string,
+  to: string,
+  deps: AuthDeps,
+  fetchFn: typeof fetch = fetch,
+): Promise<EmailQuoteResult> {
+  const session = await loadSession(sessionId, deps);
+  if (!sessionId || !session) return { status: "signed_out" };
+  const organizationId = session.activeOrganizationId;
+  if (!organizationId) return { status: "forbidden" };
+  const result = await apiRequest({
+    apiUrl: deps.config.apiUrl,
+    accessToken: session.accessToken,
+    organizationId,
+    path: `/v1/quotes/${id}/email`,
+    json: to === "" ? {} : { to },
+    schema: emailResultSchema,
+    fetchFn,
+  });
+  if (result.ok) {
+    return result.data.status === "sent"
+      ? { status: "sent", to: result.data.to }
+      : { status: "send_failed" };
+  }
+  if (result.status === 401) return { status: "signed_out" };
+  if (result.status === 403) return { status: "forbidden" };
+  if (result.status === 404) return { status: "not_found" };
+  if (result.status === 409) return { status: "not_sendable" };
+  if (result.status === 400) {
+    return {
+      status: result.errors.some((error) => error.path === "to" && error.code === "required")
+        ? "needs_address"
+        : "invalid_address",
+    };
+  }
+  if (result.status === 503 && result.code === "mail_not_configured") {
+    return { status: "mail_unconfigured" };
+  }
+  deps.log(`Mailing a quote failed with HTTP ${result.status} (${result.code})`);
+  return { status: "unavailable" };
+}

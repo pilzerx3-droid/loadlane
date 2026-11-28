@@ -4,7 +4,13 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { cookieNames } from "../lib/cookies";
 import { getAuthDeps } from "../lib/deps";
-import { changeQuoteStatus, createQuote, updateQuote, type QuoteResult } from "../lib/quotes";
+import {
+  changeQuoteStatus,
+  createQuote,
+  emailQuote,
+  updateQuote,
+  type QuoteResult,
+} from "../lib/quotes";
 
 // Server actions for quotes. The API checks permission, status rules and dates again.
 
@@ -69,4 +75,17 @@ export async function changeQuoteStatusAction(id: string, formData: FormData): P
   const { deps, sessionId } = await currentSession();
   const result = await changeQuoteStatus(sessionId, id, text(formData, "status"), deps);
   finish(result, (done) => `/quotes/${done}`, `/quotes/${id}`);
+}
+
+/** E-mails the quote PDF. Success comes back as `?notice=emailed`, problems as `?problem=`. */
+export async function emailQuoteAction(id: string, formData: FormData): Promise<void> {
+  if (!UUID_PATTERN.test(id)) redirect("/quotes");
+  const { deps, sessionId } = await currentSession();
+  const result = await emailQuote(sessionId, id, text(formData, "to"), deps);
+  if (result.status === "signed_out") redirect("/");
+  redirect(
+    result.status === "sent"
+      ? `/quotes/${id}?notice=emailed`
+      : `/quotes/${id}?problem=${result.status}`,
+  );
 }

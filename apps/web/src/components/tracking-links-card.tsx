@@ -78,7 +78,16 @@ export function TrackingLinksCard({
           {state.message ? <Notice>{state.message}</Notice> : null}
           {state.url ? (
             <div className="rounded-control border border-border p-3" aria-live="polite">
-              <p className="text-sm font-semibold">Send this link to your customer now</p>
+              <p className="text-sm font-semibold">
+                {state.mail === "sent"
+                  ? "The link was e-mailed to your customer"
+                  : "Send this link to your customer now"}
+              </p>
+              {state.mail === "failed" ? (
+                <p className="mt-1 text-xs text-danger">
+                  The e-mail could not be sent. Copy the link below and send it yourself.
+                </p>
+              ) : null}
               <p className="mt-1 text-xs text-muted-foreground">
                 It is shown only once. Valid until{" "}
                 {new Date(state.expiresAt ?? "").toLocaleString("en-US")}.
@@ -92,6 +101,16 @@ export function TrackingLinksCard({
               />
             </div>
           ) : null}
+          <label className="block text-sm">
+            <span className="text-muted-foreground">E-mail the link to (optional)</span>
+            <input
+              name="emailTo"
+              type="email"
+              autoComplete="off"
+              placeholder="customer@example.com"
+              className="mt-1 w-full max-w-sm rounded-control border border-border bg-card px-3 py-2 text-sm"
+            />
+          </label>
           <Button type="submit" variant="outline" disabled={pending}>
             {pending ? "Creating…" : "Create tracking link"}
           </Button>

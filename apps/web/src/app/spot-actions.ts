@@ -15,12 +15,20 @@ const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{
 
 export interface CreateTenderState {
   /** One link per invited carrier, shown once. Never put in a URL of this site. */
-  links?: { carrierId: string; carrierName: string; url: string }[];
+  links?: {
+    carrierId: string;
+    carrierName: string;
+    url: string;
+    mail?: "sent" | "failed" | "skipped";
+  }[];
+  mailRequested?: boolean;
   tenderId?: string;
   message?: string;
 }
 
 const CREATE_MESSAGES = {
+  mail_unconfigured:
+    "E-mail is not set up on this server yet, so nothing was created. Untick the e-mail option to create the offer and copy the links yourself.",
   invalid: "Check the deadline (in the future) and choose at least one carrier.",
   not_offerable: "Only a transport that is created or planned can be offered to carriers.",
   already_open: "This transport already has an open offer.",
@@ -70,6 +78,7 @@ export async function createTenderAction(
     const [id, ...rest] = entry.split("|");
     if (id) carrierNames[id] = rest.join("|");
   }
+  const sendEmail = formData.get("sendEmail") === "on";
   const targetText = text(formData, "targetPrice");
   const target = targetText === "" ? null : (parseUsd(targetText) ?? undefined);
   if (!responseDeadline || target === undefined || carrierIds.length === 0) {
@@ -84,11 +93,14 @@ export async function createTenderAction(
       notes: text(formData, "notes"),
       carrierIds,
       carrierNames,
+      sendEmail,
     },
     deps,
   );
   if (result.status === "signed_out") redirect("/");
-  if (result.status === "created") return { links: result.links, tenderId: result.id };
+  if (result.status === "created") {
+    return { links: result.links, tenderId: result.id, mailRequested: sendEmail };
+  }
   return { message: CREATE_MESSAGES[result.status] };
 }
 

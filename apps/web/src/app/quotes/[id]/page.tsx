@@ -46,6 +46,7 @@ export default async function QuotePage({
       content = (
         <div className="space-y-4">
           {problem && QUOTE_PROBLEMS[problem] ? <Notice>{QUOTE_PROBLEMS[problem]}</Notice> : null}
+          {query["notice"] === "emailed" ? <Notice>The quote was e-mailed as a PDF.</Notice> : null}
           <QuoteDetailView
             quote={quote.data}
             canManage={canManage}

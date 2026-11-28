@@ -22,6 +22,7 @@ import {
 } from "@loadlane/ui";
 import {
   changeQuoteStatusAction,
+  emailQuoteAction,
   createQuoteAction,
   updateQuoteAction,
 } from "../app/quote-actions";
@@ -36,6 +37,12 @@ export const QUOTE_PROBLEMS: Record<string, string> = {
   forbidden: "You do not have permission to change quotes.",
   not_found: "This quote or calculation no longer exists.",
   unavailable: "Loadlane could not save this right now. Please try again in a moment.",
+  send_failed: "The e-mail could not be sent. Download the PDF and send it yourself.",
+  mail_unconfigured:
+    "E-mail is not set up on this server yet. Download the PDF and send it yourself.",
+  not_sendable: "Mark the quote as sent before e-mailing it.",
+  needs_address: "The customer has no contact e-mail stored. Enter an address.",
+  invalid_address: "That e-mail address was not accepted.",
 };
 
 function statusText(status: string, expired: boolean): string {
@@ -292,10 +299,33 @@ export function QuoteDetailView({
             ))}
           </div>
           <p className="text-xs text-muted-foreground">
-            Loadlane does not send quotes yet: send it to your customer yourself, then mark it as
-            sent.
+            Mark the quote as sent once it went to your customer. After that you can e-mail the PDF
+            from here.
           </p>
         </Card>
+      ) : null}
+
+      {canManage && quote.status === "sent" && !quote.expired ? (
+        <form action={emailQuoteAction.bind(null, quote.id)}>
+          <Card className="space-y-3 p-5">
+            <h2 className="text-base font-semibold">E-mail the PDF</h2>
+            <div>
+              <label htmlFor="email-to" className="mb-1 block text-[13px] font-semibold">
+                To (leave empty to use the customer contact e-mail)
+              </label>
+              <Input
+                id="email-to"
+                name="to"
+                type="email"
+                autoComplete="off"
+                placeholder="customer@example.com"
+              />
+            </div>
+            <Button type="submit" variant="outline">
+              Send quote by e-mail
+            </Button>
+          </Card>
+        </form>
       ) : null}
 
       {canManage && quote.editable ? (

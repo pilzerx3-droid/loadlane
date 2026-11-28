@@ -66,6 +66,32 @@ describe("tracking links", () => {
     );
   });
 
+  it("sends the address to the API and reports the mail outcome and a missing mail setup", async () => {
+    let sent: unknown;
+    const spy: typeof fetch = (_url, init) => {
+      sent = JSON.parse(typeof init?.body === "string" ? init.body : "{}");
+      return respond(201, { ...link, mail: { status: "sent", errorCode: null } })(_url, init);
+    };
+    const created = await createTrackingLink("s1", "t", deps, spy, { emailTo: "c@example.com" });
+    expect(sent).toEqual({ emailTo: "c@example.com" });
+    expect(created).toMatchObject({ status: "created", mail: "sent" });
+    const failed = await createTrackingLink(
+      "s1",
+      "t",
+      deps,
+      respond(201, { ...link, mail: { status: "failed", errorCode: "mail_send_failed" } }),
+      { emailTo: "c@example.com" },
+    );
+    expect(failed).toMatchObject({ status: "created", mail: "failed" });
+    expect(
+      (
+        await createTrackingLink("s1", "t", deps, respond(503, { code: "mail_not_configured" }), {
+          emailTo: "c@example.com",
+        })
+      ).status,
+    ).toBe("mail_unconfigured");
+  });
+
   it("revokes", async () => {
     expect(await revokeTrackingLink("s1", "l", deps, respond(200, link))).toBe("done");
     expect(await revokeTrackingLink("s1", "l", deps, respond(404, {}))).toBe("not_found");

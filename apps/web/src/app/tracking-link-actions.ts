@@ -8,6 +8,7 @@ import { createTrackingLink, revokeTrackingLink } from "../lib/tracking-links";
 
 // Server actions for customer tracking links. The API checks permission and organization again.
 
+const EMAIL_PATTERN = /^[^s@]+@[^s@]+.[^s@]+$/;
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export interface CreateTrackingState {
@@ -15,11 +16,15 @@ export interface CreateTrackingState {
   url?: string;
   expiresAt?: string;
   message?: string;
+  /** Present when an address was given: whether the mail went out. */
+  mail?: "sent" | "failed";
 }
 
 const MESSAGES = {
   closed: "A cancelled transport cannot get a tracking link.",
   forbidden: "You do not have permission to create tracking links.",
+  mail_unconfigured:
+    "E-mail is not set up on this server yet, so no link was created. Create it without an address instead.",
   not_found: "This transport no longer exists.",
   unavailable: "Loadlane could not create the link right now. Please try again in a moment.",
 } as const;
@@ -33,13 +38,25 @@ async function currentSession() {
 export async function createTrackingLinkAction(
   transportId: string,
   _previous: CreateTrackingState | undefined,
+  formData: FormData,
 ): Promise<CreateTrackingState> {
   void _previous; // the shape useActionState requires; each click starts from scratch
+  const typed = formData.get("emailTo");
+  const emailTo = typeof typed === "string" ? typed.trim() : "";
+  if (emailTo && !EMAIL_PATTERN.test(emailTo)) return { message: "Enter a valid e-mail address." };
   if (!UUID_PATTERN.test(transportId)) redirect("/transports");
   const { deps, sessionId } = await currentSession();
-  const result = await createTrackingLink(sessionId, transportId, deps);
+  const result = await createTrackingLink(sessionId, transportId, deps, fetch, {
+    ...(emailTo ? { emailTo } : {}),
+  });
   if (result.status === "signed_out") redirect("/");
-  if (result.status === "created") return { url: result.url, expiresAt: result.expiresAt };
+  if (result.status === "created") {
+    return {
+      url: result.url,
+      expiresAt: result.expiresAt,
+      ...(result.mail ? { mail: result.mail } : {}),
+    };
+  }
   return { message: MESSAGES[result.status] };
 }
 

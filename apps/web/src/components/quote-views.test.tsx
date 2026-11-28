@@ -68,7 +68,7 @@ describe("QuoteDetailView", () => {
     expect(html).toContain("Edit draft");
     expect(html).toContain("Net 30");
     expect(html).toContain("15.00 %");
-    expect(html).toContain("Loadlane does not send quotes yet");
+    expect(html).toContain("Mark the quote as sent once it went to your customer");
     expect(html).toContain(`/quotes/${detail.id}/pdf`);
   });
 

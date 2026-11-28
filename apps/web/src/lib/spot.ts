@@ -63,6 +63,15 @@ export const tenderDetailSchema = tenderSummarySchema.extend({
 
 export const createdTenderSchema = tenderDetailSchema.extend({
   links: z.array(z.object({ carrierId: z.string(), token: z.string() })),
+  mail: z
+    .array(
+      z.object({
+        carrierId: z.string(),
+        status: z.enum(["sent", "failed", "skipped"]),
+        errorCode: z.string().nullable(),
+      }),
+    )
+    .optional(),
 });
 
 export type TenderSummary = z.infer<typeof tenderSummarySchema>;
@@ -73,6 +82,7 @@ export type SpotResult =
   | {
       status:
         | "invalid"
+        | "mail_unconfigured"
         | "not_offerable"
         | "already_open"
         | "not_open"
@@ -87,7 +97,13 @@ export type CreateTenderResult =
   | {
       status: "created";
       id: string;
-      links: { carrierId: string; carrierName: string; url: string }[];
+      links: {
+        carrierId: string;
+        carrierName: string;
+        url: string;
+        /** Only when e-mail was asked for. skipped: the carrier has no contact address. */
+        mail?: "sent" | "failed" | "skipped";
+      }[];
     }
   | Exclude<SpotResult, { status: "done" }>;
 
@@ -110,6 +126,9 @@ function mapFailure(
     return { status: "invalid" };
   }
   if (result.status === 400) return { status: "invalid" };
+  if (result.status === 503 && result.code === "mail_not_configured") {
+    return { status: "mail_unconfigured" };
+  }
   deps.log(`A spot freight call failed with HTTP ${result.status} (${result.code})`);
   return { status: "unavailable" };
 }
@@ -128,6 +147,8 @@ export interface NewTender {
   notes: string;
   carrierIds: string[];
   carrierNames: Record<string, string>;
+  /** E-mail each carrier its link (to the contact address stored on the carrier). */
+  sendEmail?: boolean;
 }
 
 export async function createTender(
@@ -149,6 +170,7 @@ export async function createTender(
       targetPriceCents: tender.targetPriceCents,
       notes: tender.notes,
       carrierIds: tender.carrierIds,
+      ...(tender.sendEmail ? { sendEmail: true } : {}),
     },
     schema: createdTenderSchema,
     fetchFn,
@@ -157,11 +179,15 @@ export async function createTender(
   return {
     status: "created",
     id: result.data.id,
-    links: result.data.links.map((link) => ({
-      carrierId: link.carrierId,
-      carrierName: tender.carrierNames[link.carrierId] ?? "Carrier",
-      url: spotUrl(deps.config.appUrl.origin, link.token),
-    })),
+    links: result.data.links.map((link) => {
+      const mail = result.data.mail?.find((entry) => entry.carrierId === link.carrierId)?.status;
+      return {
+        carrierId: link.carrierId,
+        carrierName: tender.carrierNames[link.carrierId] ?? "Carrier",
+        url: spotUrl(deps.config.appUrl.origin, link.token),
+        ...(mail ? { mail } : {}),
+      };
+    }),
   };
 }
 

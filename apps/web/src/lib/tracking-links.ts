@@ -13,7 +13,12 @@ const summarySchema = z.object({
 });
 
 export const trackingLinkListSchema = z.object({ items: z.array(summarySchema) });
-export const createdTrackingLinkSchema = summarySchema.extend({ token: z.string() });
+export const createdTrackingLinkSchema = summarySchema.extend({
+  token: z.string(),
+  mail: z
+    .object({ status: z.enum(["sent", "failed"]), errorCode: z.string().nullable() })
+    .optional(),
+});
 export type TrackingLinkItem = z.infer<typeof summarySchema>;
 
 export const publicTrackingSchema = z.object({
@@ -37,8 +42,11 @@ export const publicTrackingSchema = z.object({
 export type PublicTracking = z.infer<typeof publicTrackingSchema>;
 
 export type CreateTrackingResult =
-  | { status: "created"; url: string; expiresAt: string }
-  | { status: "closed" | "forbidden" | "not_found" | "signed_out" | "unavailable" };
+  | { status: "created"; url: string; expiresAt: string; mail?: "sent" | "failed" }
+  | {
+      status:
+        "closed" | "forbidden" | "mail_unconfigured" | "not_found" | "signed_out" | "unavailable";
+    };
 
 export function trackingUrl(appOrigin: string, token: string): string {
   return `${appOrigin}/t/${encodeURIComponent(token)}`;
@@ -49,6 +57,7 @@ export async function createTrackingLink(
   transportId: string,
   deps: AuthDeps,
   fetchFn: typeof fetch = fetch,
+  options: { emailTo?: string } = {},
 ): Promise<CreateTrackingResult> {
   const session = await loadSession(sessionId, deps);
   if (!sessionId || !session) return { status: "signed_out" };
@@ -59,7 +68,7 @@ export async function createTrackingLink(
     accessToken: session.accessToken,
     organizationId,
     path: `/v1/transports/${transportId}/tracking-links`,
-    json: {},
+    json: options.emailTo ? { emailTo: options.emailTo } : {},
     schema: createdTrackingLinkSchema,
     fetchFn,
   });
@@ -68,12 +77,14 @@ export async function createTrackingLink(
       status: "created",
       url: trackingUrl(deps.config.appUrl.origin, result.data.token),
       expiresAt: result.data.expiresAt,
+      ...(result.data.mail ? { mail: result.data.mail.status } : {}),
     };
   }
   if (result.status === 401) return { status: "signed_out" };
   if (result.status === 403) return { status: "forbidden" };
   if (result.status === 404) return { status: "not_found" };
   if (result.status === 409) return { status: "closed" };
+  if (result.status === 503) return { status: "mail_unconfigured" };
   deps.log(`Creating a tracking link failed with HTTP ${result.status}`);
   return { status: "unavailable" };
 }

@@ -5,6 +5,12 @@ import { Button, Card, Input } from "@loadlane/ui";
 import { createTenderAction, type CreateTenderState } from "../app/spot-actions";
 import { Notice } from "./notices";
 
+const MAIL_LABELS = {
+  sent: "E-mail sent",
+  failed: "E-mail could not be sent: send this link yourself",
+  skipped: "No contact e-mail stored: send this link yourself",
+} as const;
+
 export interface CarrierOption {
   id: string;
   name: string;
@@ -33,13 +39,22 @@ export function SpotNewForm({
             Offer created. Send each carrier its own link now
           </h2>
           <p className="text-sm text-muted-foreground">
-            The links are shown only once and cannot be looked up later. Loadlane does not send them
-            yet: copy each link into your own e-mail or message.
+            The links are shown only once and cannot be looked up later.{" "}
+            {state.mailRequested
+              ? "Carriers marked as sent got their link by e-mail. Send the others yourself."
+              : "Copy each link into your own e-mail or message."}
           </p>
           <ul className="space-y-3">
             {state.links.map((link) => (
               <li key={link.carrierId}>
-                <p className="text-sm font-medium">{link.carrierName}</p>
+                <p className="text-sm font-medium">
+                  {link.carrierName}
+                  {link.mail ? (
+                    <span className="ml-2 font-normal text-muted-foreground">
+                      {MAIL_LABELS[link.mail]}
+                    </span>
+                  ) : null}
+                </p>
                 <input
                   readOnly
                   value={link.url}
@@ -90,6 +105,10 @@ export function SpotNewForm({
             </ul>
           )}
         </div>
+        <label className="flex items-center gap-2 text-sm">
+          <input type="checkbox" name="sendEmail" />
+          E-mail each carrier its link (to the contact address stored on the carrier)
+        </label>
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
             <label htmlFor="spot-deadline" className="mb-1 block text-[13px] font-semibold">
