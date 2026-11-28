@@ -96,7 +96,10 @@ describe("registering endpoints", () => {
     const w = await workspace(api);
     const created = await w.register();
     expect(created["secret"]).toMatch(/^whsec_/);
-    expect(created).toMatchObject({ state: "active", events: ["transport.status_changed"] });
+    expect(created).toMatchObject({
+      state: "active",
+      events: ["transport.status_changed", "quote.status_changed", "spot.status_changed"],
+    });
     const stored = await api.ownerRows(
       "SELECT secret_encrypted FROM webhook_endpoint WHERE id = $1",
       [created["id"]],
@@ -302,6 +305,58 @@ describe("events and delivery", () => {
       .map((c) => JSON.parse(c.body) as { data: Json })
       .find((event) => event.data["toStatus"] === "planned");
     expect(planned?.data["externalId"]).toBe("SAP-42");
+  });
+});
+
+describe("quote and spot events", () => {
+  it("queues a quote status change and a spot offer change without prices or names", async () => {
+    const w = await workspace(api);
+    const endpoint = await w.register(`${receiverUrl}/more`);
+    const customer = await w.post("/v1/customers", { name: "Secret Buyer Inc" });
+    const calculation = await w.post("/v1/calculations", {
+      name: "Lane",
+      customerId: customer["id"],
+      lines: [{ kind: "base_freight", label: "Carrier rate", amountCents: 90_000 }],
+      pricing: { mode: "markup", rateBp: 1_500 },
+    });
+    const quote = await w.post("/v1/quotes", {
+      calculationId: calculation["id"],
+      validUntil: new Date(Date.now() + 14 * 86_400_000).toISOString().slice(0, 10),
+    });
+    await w.post(`/v1/quotes/${String(quote["id"])}/status`, { status: "sent" });
+    const carrier = await w.post("/v1/carriers", { name: "Hidden Carrier LLC" });
+    const transportId = await w.transport();
+    const tender = await w.post("/v1/spot-tenders", {
+      transportId,
+      responseDeadline: new Date(Date.now() + 86_400_000).toISOString(),
+      carrierIds: [carrier["id"]],
+    });
+    await w.post(`/v1/spot-tenders/${String(tender["id"])}/cancel`, {});
+    calls.length = 0;
+    answer = 200;
+    await dispatch(api);
+    const events = calls
+      .filter((c) => c.path === "/more")
+      .map((c) => JSON.parse(c.body) as { type: string; data: Json });
+    const quoteEvent = events.find((e) => e.type === "quote.status_changed");
+    expect(quoteEvent?.data).toMatchObject({
+      quoteId: quote["id"],
+      reference: "QT-000001",
+      fromStatus: "draft",
+      toStatus: "sent",
+    });
+    const spotEvent = events.find((e) => e.type === "spot.status_changed");
+    expect(spotEvent?.data).toMatchObject({
+      tenderId: tender["id"],
+      transportId,
+      fromStatus: "open",
+      toStatus: "cancelled",
+    });
+    const raw = calls.map((c) => c.body).join("");
+    for (const secret of ["Secret Buyer", "Hidden Carrier", "103500", "90000"]) {
+      expect(raw).not.toContain(secret);
+    }
+    void endpoint;
   });
 });
 

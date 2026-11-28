@@ -9,7 +9,11 @@ export interface WebhookContext {
   requestId?: string | undefined;
 }
 
-export const WEBHOOK_EVENTS = ["transport.status_changed"] as const;
+export const WEBHOOK_EVENTS = [
+  "transport.status_changed",
+  "quote.status_changed",
+  "spot.status_changed",
+] as const;
 
 export interface WebhookSummary {
   id: string;

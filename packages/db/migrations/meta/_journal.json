@@ -162,6 +162,13 @@
       "when": 1795870813574,
       "tag": "0022_webhooks",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1795871590059,
+      "tag": "0023_webhook_quote_spot_events",
+      "breakpoints": true
     }
   ]
 }
