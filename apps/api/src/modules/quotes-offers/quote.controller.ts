@@ -9,8 +9,11 @@ import {
   Post,
   Query,
   Req,
+  Res,
+  StreamableFile,
 } from "@nestjs/common";
-import type { z } from "zod";
+import type { Response } from "express";
+import { z } from "zod";
 import { RequirePermissions } from "../../platform/access.ts";
 import { idParamSchema } from "../../platform/directory-http.ts";
 import { ApiRoute } from "../../platform/openapi.ts";
@@ -26,6 +29,7 @@ import {
   type QuoteDetail,
   type QuoteList,
 } from "./quote.schemas.ts";
+import { renderQuotePdf } from "./quote-pdf.ts";
 import type { QuoteService } from "./quote-service.ts";
 import { QUOTE_SERVICE } from "./tokens.ts";
 
@@ -81,6 +85,27 @@ export class QuoteController {
     @Param("id", new ZodPipe(idParamSchema)) id: string,
   ): Promise<QuoteDetail> {
     return this.service.get(contextOf(request), id);
+  }
+
+  @Get(":id/pdf")
+  @RequirePermissions("quote:read")
+  @ApiRoute({
+    summary:
+      "The quote as a PDF for the customer: issuer, customer, service, price, validity and terms. No cost or margin.",
+    response: z.any(),
+  })
+  async pdf(
+    @Req() request: TenantRequest,
+    @Param("id", new ZodPipe(idParamSchema)) id: string,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<StreamableFile> {
+    const data = await this.service.pdfData(contextOf(request), id);
+    const bytes = await renderQuotePdf(data);
+    response.setHeader("Content-Type", "application/pdf");
+    response.setHeader("Content-Disposition", `attachment; filename="${data.reference}.pdf"`);
+    response.setHeader("X-Content-Type-Options", "nosniff");
+    response.setHeader("Cache-Control", "private, no-store");
+    return new StreamableFile(bytes);
   }
 
   @Patch(":id")

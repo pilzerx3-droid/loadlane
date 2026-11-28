@@ -212,6 +212,14 @@ export function QuoteDetailView({
           </p>
         ) : null}
         {quote.terms ? <p className="whitespace-pre-line pt-2 text-sm">{quote.terms}</p> : null}
+        <p className="pt-2 text-sm">
+          <a href={`/quotes/${quote.id}/pdf`} className="underline">
+            Download as PDF
+          </a>{" "}
+          <span className="text-muted-foreground">
+            (for the customer: price, validity and terms; no cost or margin)
+          </span>
+        </p>
       </Card>
 
       <Card className="space-y-1 p-5 text-sm">

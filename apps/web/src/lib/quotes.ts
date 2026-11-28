@@ -96,6 +96,39 @@ async function call(
   return { status: "unavailable" };
 }
 
+/** Fetches the quote PDF for the person's browser. The access token never reaches the browser. */
+export async function fetchQuotePdf(
+  sessionId: string | undefined,
+  id: string,
+  deps: AuthDeps,
+  fetchFn: typeof fetch = fetch,
+): Promise<
+  | { status: "ok"; response: Response }
+  | { status: "signed_out" | "forbidden" | "not_found" | "unavailable" }
+> {
+  const session = await loadSession(sessionId, deps);
+  if (!sessionId || !session) return { status: "signed_out" };
+  if (!session.activeOrganizationId) return { status: "forbidden" };
+  let response: Response;
+  try {
+    response = await fetchFn(`${deps.config.apiUrl}/v1/quotes/${id}/pdf`, {
+      headers: {
+        authorization: `Bearer ${session.accessToken}`,
+        "x-organization-id": session.activeOrganizationId,
+      },
+      cache: "no-store",
+      signal: AbortSignal.timeout(30_000),
+    });
+  } catch {
+    return { status: "unavailable" };
+  }
+  if (response.ok) return { status: "ok", response };
+  if (response.status === 401) return { status: "signed_out" };
+  if (response.status === 403) return { status: "forbidden" };
+  if (response.status === 404 || response.status === 400) return { status: "not_found" };
+  return { status: "unavailable" };
+}
+
 export interface NewQuote {
   calculationId: string;
   customerId: string;

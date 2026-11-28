@@ -68,6 +68,7 @@ describe("QuoteDetailView", () => {
     expect(html).toContain("Net 30");
     expect(html).toContain("15.00 %");
     expect(html).toContain("Loadlane does not send quotes yet");
+    expect(html).toContain(`/quotes/${detail.id}/pdf`);
   });
 
   it("offers nothing to change for read-only people or finished quotes", () => {

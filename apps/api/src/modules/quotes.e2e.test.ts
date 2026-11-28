@@ -183,6 +183,27 @@ describe("status model and editing", () => {
   });
 });
 
+describe("the quote PDF", () => {
+  it("downloads as a PDF without cost or margin, is audited, and respects permissions and organizations", async () => {
+    const w = await adminWorkspace();
+    const made = await body(await w.quote(String((await w.calc())["id"]), { terms: "Net 30" }));
+    const id = String(made["id"]);
+    const response = await api.call(`/v1/quotes/${id}/pdf`, w.as);
+    expect(response.status).toBe(200);
+    expect(response.headers.get("content-type")).toBe("application/pdf");
+    expect(response.headers.get("content-disposition")).toContain("QT-000001.pdf");
+    const bytes = Buffer.from(await response.arrayBuffer());
+    expect(bytes.subarray(0, 5).toString()).toBe("%PDF-");
+    const audit = await body(await api.call("/v1/audit?entityType=quote", w.as));
+    expect((audit["items"] as Json[]).map((item) => item["action"])).toContain("quote.pdf_created");
+
+    const other = await adminWorkspace();
+    expect((await api.call(`/v1/quotes/${id}/pdf`, other.as)).status).toBe(404);
+    const carrierUser = await memberOf(w.organizationId, "carrier_user");
+    expect((await api.call(`/v1/quotes/${id}/pdf`, carrierUser)).status).toBe(403);
+  });
+});
+
 describe("listing, permissions and isolation", () => {
   it("lists newest first and filters by status", async () => {
     const w = await adminWorkspace();

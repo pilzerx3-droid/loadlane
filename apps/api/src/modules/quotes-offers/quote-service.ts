@@ -9,6 +9,7 @@ import {
 } from "@loadlane/shared";
 import type pg from "pg";
 import { ValidationFailedError } from "../../platform/validation.ts";
+import type { QuotePdfData } from "./quote-pdf.ts";
 import type {
   CreateQuoteInput,
   QuoteDetail,
@@ -196,6 +197,35 @@ export class QuoteService {
     return withTenant(this.pool, this.tenant(context), async ({ client }) =>
       this.load(client, id, await this.today(client)),
     );
+  }
+
+  /** Only what the customer may see, for the PDF. Cost and margin never leave the calculation. */
+  async pdfData(context: QuoteContext, id: string): Promise<QuotePdfData> {
+    return withTenant(this.pool, this.tenant(context), async ({ client }) => {
+      const rows = await client.query<Row>(
+        `SELECT q.number, q.status, q.price_cents, q.valid_until::text AS valid_until, q.terms,
+                cu.name AS customer_name, ca.name AS calculation_name, o.name AS issuer
+         FROM quote q
+         JOIN customer cu ON cu.id = q.customer_id AND cu.organization_id = q.organization_id
+         JOIN calculation ca ON ca.id = q.calculation_id AND ca.organization_id = q.organization_id
+         JOIN organization o ON o.id = q.organization_id
+         WHERE q.id = $1`,
+        [id],
+      );
+      const row = rows.rows[0];
+      if (!row) throw new NotFoundException();
+      await this.audit(client, context, "quote.pdf_created", id, {});
+      return {
+        issuer: row["issuer"] as string,
+        reference: quoteReference(Number(row["number"])),
+        customerName: row["customer_name"] as string,
+        calculationName: row["calculation_name"] as string,
+        priceCents: Number(row["price_cents"]),
+        validUntil: row["valid_until"] as string,
+        terms: row["terms"] as string | null,
+        status: row["status"] as string,
+      };
+    });
   }
 
   async update(context: QuoteContext, id: string, patch: UpdateQuoteInput): Promise<QuoteDetail> {
