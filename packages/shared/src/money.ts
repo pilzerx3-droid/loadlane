@@ -116,6 +116,27 @@ export function formatUsd(cents: Cents): string {
   return `${negative ? "-" : ""}$${dollars}.${rest}`;
 }
 
+/**
+ * Reads what a person types as an amount: "1058.82", "1,058.82", "$1,058.82", "900". At most two
+ * decimals; no signs, no other text. Returns undefined when the text is not an amount.
+ */
+export function parseUsd(text: string): Cents | undefined {
+  const cleaned = text.trim().replace(/^\$/, "").replace(/,/g, "");
+  if (!/^\d+(\.\d{1,2})?$/.test(cleaned)) return undefined;
+  const [dollars = "0", fraction = ""] = cleaned.split(".");
+  const cents = Number(dollars) * 100 + Number(fraction.padEnd(2, "0"));
+  return Number.isSafeInteger(cents) ? cents : undefined;
+}
+
+/** Reads "15", "15.5", "15 %" or "15.25%" as basis points (1500, 1550, 1525). At most two decimals. */
+export function parsePercent(text: string): BasisPoints | undefined {
+  const cleaned = text.trim().replace(/\s*%$/, "");
+  if (!/^\d+(\.\d{1,2})?$/.test(cleaned)) return undefined;
+  const [whole = "0", fraction = ""] = cleaned.split(".");
+  const bp = Number(whole) * 100 + Number(fraction.padEnd(2, "0"));
+  return Number.isSafeInteger(bp) ? bp : undefined;
+}
+
 /** "15.00 %" for display. */
 export function formatPercent(bp: BasisPoints): string {
   const negative = bp < 0;

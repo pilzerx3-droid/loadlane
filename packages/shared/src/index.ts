@@ -36,6 +36,8 @@ export {
   analyzePrice,
   formatPercent,
   formatUsd,
+  parsePercent,
+  parseUsd,
   priceFromContribution,
   priceFromMargin,
   priceFromMarkup,

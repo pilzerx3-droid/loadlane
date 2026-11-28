@@ -4,6 +4,8 @@ import {
   analyzePrice,
   formatPercent,
   formatUsd,
+  parsePercent,
+  parseUsd,
   priceFromContribution,
   priceFromMargin,
   priceFromMarkup,
@@ -81,6 +83,40 @@ describe("rounding and limits", () => {
   it("stays exact for very large amounts", () => {
     const cost = 900_719_925_474; // $9 billion, well beyond what floating point multiplies exactly at 10^4
     expect(priceFromMarkup(cost, 1_500)).toBe(1_035_827_914_295); // exact: cost x 1.15, rounded half up
+  });
+});
+
+describe("reading what people type", () => {
+  it.each([
+    ["1058.82", 105_882],
+    ["1,058.82", 105_882],
+    ["$1,058.82", 105_882],
+    [" 900 ", 90_000],
+    ["0.5", 50],
+    ["0", 0],
+  ])("amount %j is %d cents", (text, cents) => {
+    expect(parseUsd(text)).toBe(cents);
+  });
+
+  it.each(["", "abc", "-5", "1.234", "1.2.3", "12 dollars", "$", "1e3"])(
+    "amount %j is not an amount",
+    (text) => {
+      expect(parseUsd(text)).toBeUndefined();
+    },
+  );
+
+  it.each([
+    ["15", 1_500],
+    ["15.5", 1_550],
+    ["15 %", 1_500],
+    ["15.25%", 1_525],
+    ["0", 0],
+  ])("percent %j is %d basis points", (text, bp) => {
+    expect(parsePercent(text)).toBe(bp);
+  });
+
+  it.each(["", "-1", "15.123", "fifteen"])("percent %j is not a percentage", (text) => {
+    expect(parsePercent(text)).toBeUndefined();
   });
 });
 

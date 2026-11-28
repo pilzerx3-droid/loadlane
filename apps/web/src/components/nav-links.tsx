@@ -3,6 +3,7 @@
 import {
   AlertTriangle,
   Building2,
+  Calculator,
   History,
   LayoutDashboard,
   MapPin,
@@ -20,6 +21,7 @@ const ICONS: Record<NavIcon, LucideIcon> = {
   overview: LayoutDashboard,
   activity: History,
   alerts: AlertTriangle,
+  calculator: Calculator,
   transports: Package,
   customers: Building2,
   carriers: Truck,
