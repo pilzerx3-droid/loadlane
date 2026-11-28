@@ -37,6 +37,7 @@ const KIND_LABELS: Record<string, string> = {
   location: "Location",
   organization: "Organization",
   driver_link: "Driver Link",
+  tracking_link: "Tracking link",
 };
 
 const VERB_LABELS: Record<string, string> = {

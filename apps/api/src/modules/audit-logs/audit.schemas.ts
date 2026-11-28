@@ -4,7 +4,16 @@ export const auditQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(100).default(50),
   offset: z.coerce.number().int().min(0).default(0),
   entityType: z
-    .enum(["transport", "document", "customer", "carrier", "location", "organization"])
+    .enum([
+      "transport",
+      "document",
+      "customer",
+      "carrier",
+      "location",
+      "organization",
+      "driver_link",
+      "tracking_link",
+    ])
     .optional()
     .describe("Only entries about this kind of record"),
   entityId: z.uuid().optional().describe("Only entries about this record"),

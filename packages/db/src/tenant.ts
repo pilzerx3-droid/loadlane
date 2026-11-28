@@ -21,6 +21,8 @@ export interface TenantContext {
    * visible so the API can resolve the organization. Set it only from a token the request carried.
    */
   driverTokenHash?: string;
+  /** SHA-256 hex of a presented customer tracking token (migration 0011). Same idea as above. */
+  trackingTokenHash?: string;
 }
 
 export interface TenantSession {
@@ -67,6 +69,7 @@ export async function withTenant<T>(
   const authIssuer = assertText("authIssuer", context.authIssuer);
   const authSubject = assertText("authSubject", context.authSubject);
   const driverTokenHash = assertText("driverTokenHash", context.driverTokenHash);
+  const trackingTokenHash = assertText("trackingTokenHash", context.trackingTokenHash);
 
   const client = await pool.connect();
   let brokenConnection: Error | undefined;
@@ -75,8 +78,9 @@ export async function withTenant<T>(
     await client.query(
       `SELECT set_config('app.organization_id', $1, true), set_config('app.user_id', $2, true),
               set_config('app.auth_issuer', $3, true), set_config('app.auth_subject', $4, true),
-              set_config('app.driver_token_hash', $5, true)`,
-      [organizationId, userId, authIssuer, authSubject, driverTokenHash],
+              set_config('app.driver_token_hash', $5, true),
+              set_config('app.tracking_token_hash', $6, true)`,
+      [organizationId, userId, authIssuer, authSubject, driverTokenHash, trackingTokenHash],
     );
     const result = await fn({ db: drizzle({ client, schema }), client });
     await client.query("COMMIT");

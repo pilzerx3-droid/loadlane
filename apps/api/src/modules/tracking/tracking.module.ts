@@ -1,5 +1,19 @@
 import { Module } from "@nestjs/common";
+import type pg from "pg";
+import { APP_POOL } from "../../platform/tokens.ts";
+import { TrackingController } from "./tracking.controller.ts";
+import { TrackingService } from "./tracking-service.ts";
+import { TRACKING_SERVICE } from "./tokens.ts";
 
-/** Tracking. Planned for Phase 3 (Driver Link and GPS). Intentionally empty: no code until its phase starts. */
-@Module({})
+/** Customer tracking links (ADR 0017). Driver positions are handled by the driver-link module. */
+@Module({
+  controllers: [TrackingController],
+  providers: [
+    {
+      provide: TRACKING_SERVICE,
+      inject: [APP_POOL],
+      useFactory: (pool: pg.Pool) => new TrackingService(pool),
+    },
+  ],
+})
 export class TrackingModule {}

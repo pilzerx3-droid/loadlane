@@ -32,6 +32,7 @@ const TENANT_TABLES = [
   "driver_consent",
   "position_event",
   "last_position",
+  "tracking_link",
 ] as const;
 
 /** Tables in schema public that deliberately have no row-level security. */
@@ -118,6 +119,15 @@ async function seedOrganization(
     await c.query(
       "INSERT INTO driver_consent (organization_id, driver_link_id, text_version) VALUES ($1, $2, 1)",
       [organizationId, linkRow.rows[0]?.id],
+    );
+    await c.query(
+      "INSERT INTO tracking_link (organization_id, transport_id, token_hash, expires_at, created_by_user_id) VALUES ($1, $2, $3, now() + interval '2 days', $4)",
+      [
+        organizationId,
+        transportRow.rows[0]?.id,
+        createHash("sha256").update(`tracking-${organizationId}`).digest("hex"),
+        adminUserId,
+      ],
     );
     await c.query(
       "INSERT INTO position_event (organization_id, transport_id, driver_link_id, recorded_at, latitude, longitude, accuracy_m) VALUES ($1, $2, $3, now(), 32.78, -96.8, 12)",
@@ -235,6 +245,11 @@ describe("tenant isolation", () => {
         [orgB],
       ],
       [
+        "tracking_link",
+        "INSERT INTO tracking_link (organization_id, transport_id, token_hash, expires_at, created_by_user_id) VALUES ($1, gen_random_uuid(), repeat('b', 64), now(), $2)",
+        [orgB, userA],
+      ],
+      [
         "position_event",
         "INSERT INTO position_event (organization_id, transport_id, driver_link_id, recorded_at, latitude, longitude) VALUES ($1, gen_random_uuid(), gen_random_uuid(), now(), 1, 1)",
         [orgB],
@@ -337,6 +352,35 @@ describe("tenant isolation", () => {
     );
   });
 
+  it("tracking_link: a token reveals only its own link, only revocation changes, nothing is deleted", async () => {
+    const hash = createHash("sha256").update(`tracking-${orgA}`).digest("hex");
+    const own = await run({ trackingTokenHash: hash }, (c) =>
+      c.query<{ organization_id: string }>("SELECT organization_id FROM tracking_link"),
+    );
+    expect(own.rows.map((row) => row.organization_id)).toEqual([orgA]);
+    expect(await count({ trackingTokenHash: "0".repeat(64) }, "FROM tracking_link")).toBe(0);
+    // A driver token does not open a tracking link, and a tracking token cannot change anything.
+    expect(await count({ driverTokenHash: hash }, "FROM tracking_link")).toBe(0);
+    const revoke = await run({ trackingTokenHash: hash }, (c) =>
+      c.query("UPDATE tracking_link SET revoked_at = now()"),
+    );
+    expect(revoke.rowCount).toBe(0);
+    await expectPgError(
+      run({ organizationId: orgA }, (c) =>
+        c.query("UPDATE tracking_link SET expires_at = now() + interval '1 year'"),
+      ),
+      "42501",
+    );
+    await expectPgError(
+      run({ organizationId: orgA }, (c) => c.query("DELETE FROM tracking_link")),
+      "42501",
+    );
+    const other = await run({ organizationId: orgA }, (c) =>
+      c.query("UPDATE tracking_link SET revoked_at = now() WHERE organization_id = $1", [orgB]),
+    );
+    expect(other.rowCount).toBe(0);
+  });
+
   it("position_event: cannot be updated, other organizations cannot delete, bad coordinates fail", async () => {
     await expectPgError(
       run({ organizationId: orgA }, (c) => c.query("UPDATE position_event SET latitude = 0")),
@@ -383,6 +427,7 @@ describe("tenant isolation", () => {
       "driver_consent",
       "position_event",
       "last_position",
+      "tracking_link",
     ]) {
       expect(await count({}, `FROM ${table}`), table).toBe(0);
     }

@@ -8,3 +8,4 @@ export * from "./transport.ts";
 export * from "./document.ts";
 export * from "./driver-link.ts";
 export * from "./position.ts";
+export * from "./tracking-link.ts";

@@ -5,6 +5,7 @@ import { apiRequest } from "../lib/api-client";
 import { getAuthDeps } from "../lib/deps";
 import { documentListSchema } from "../lib/documents";
 import { driverLinkListSchema } from "../lib/driver-links";
+import { trackingLinkListSchema } from "../lib/tracking-links";
 import { parsePage } from "../lib/paging";
 import { isoToLocalInput } from "@loadlane/shared";
 import {
@@ -21,6 +22,7 @@ import { DocumentsCard } from "./documents-card";
 import { DriverLinksCard } from "./driver-links-card";
 import { LastPositionCard } from "./last-position-card";
 import { ForbiddenNotice, Notice } from "./notices";
+import { TrackingLinksCard } from "./tracking-links-card";
 import { TransportForm, type Option } from "./transport-form";
 import { TransportImportForm } from "./transport-import-form";
 import { TransportDetailView, TransportStatusBadge, TransportsList } from "./transport-views";
@@ -261,6 +263,11 @@ export async function TransportDetailPage({ id, problem }: { id: string; problem
     ? await call(viewer, `/v1/transports/${id}/documents`, documentListSchema)
     : undefined;
   const driverLinks = await call(viewer, `/v1/transports/${id}/driver-links`, driverLinkListSchema);
+  const trackingLinks = await call(
+    viewer,
+    `/v1/transports/${id}/tracking-links`,
+    trackingLinkListSchema,
+  );
   const timeZone = transport.stops[0]?.location.timezone ?? "UTC";
   return (
     <AppShell viewer={viewer}>
@@ -312,6 +319,20 @@ export async function TransportDetailPage({ id, problem }: { id: string; problem
       ) : (
         <div className="mt-5">
           <Notice>The Driver Links could not be loaded right now.</Notice>
+        </div>
+      )}
+      {trackingLinks.ok ? (
+        <div className="mt-5">
+          <TrackingLinksCard
+            transportId={transport.id}
+            links={trackingLinks.data.items}
+            canManage={canManage}
+            timeZone={timeZone}
+          />
+        </div>
+      ) : (
+        <div className="mt-5">
+          <Notice>The customer tracking links could not be loaded right now.</Notice>
         </div>
       )}
     </AppShell>
