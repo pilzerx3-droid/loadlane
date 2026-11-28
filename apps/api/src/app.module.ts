@@ -1,6 +1,6 @@
 import { Module, type DynamicModule } from "@nestjs/common";
 import { APP_GUARD } from "@nestjs/core";
-import { ThrottlerModule } from "@nestjs/throttler";
+import { ThrottlerModule, type ThrottlerStorage } from "@nestjs/throttler";
 import type pg from "pg";
 import type { RuntimeConfig } from "./config/env.ts";
 import { AuthenticationModule } from "./modules/authentication/index.ts";
@@ -21,6 +21,8 @@ export interface AppModuleOptions {
   jwksCooldownMs?: number;
   /** Default: 120 requests per client address and minute. */
   rateLimit?: { limit: number; windowMs: number };
+  /** Default: counted in memory of this instance. Pass a shared store to limit across instances. */
+  rateLimitStorage?: ThrottlerStorage;
   /** Default: on. Whether GET /v1/openapi.json is served. */
   openApiEnabled?: boolean;
   /** Default: level info, standard output. */
@@ -62,6 +64,7 @@ export class AppModule {
             { name: "default", ttl: options.rateLimit.windowMs, limit: options.rateLimit.limit },
           ],
           errorMessage: "Too many requests. Please slow down and retry later.",
+          ...(options.rateLimitStorage ? { storage: options.rateLimitStorage } : {}),
         }),
         AuthenticationModule.register(
           options.jwksCooldownMs === undefined ? {} : { jwksCooldownMs: options.jwksCooldownMs },

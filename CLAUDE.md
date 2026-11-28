@@ -73,4 +73,4 @@ Commercial modules (ADR 0007, 0016 to 0019): money is whole cents and rates are 
 
 ## Current phase
 
-Phases 1 to 6 are built (see `docs/backlog-phase-*.md`). Open: map, ETA and e-mail (need provider decisions), SAP connector (needs a test system; ADR 0009), legal texts and retention periods (product owner), hosted environment (ADR 0018, deferred), shared rate-limit store, partner API keys and webhooks.
+Phases 1 to 6 are built (see `docs/backlog-phase-*.md`). Open: map, ETA and e-mail (need provider decisions), SAP connector (needs a test system; ADR 0009), legal texts and retention periods (product owner), hosted environment (ADR 0018, deferred), partner API keys and webhooks.

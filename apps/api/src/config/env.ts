@@ -14,6 +14,8 @@ export interface ApiConfig {
   logLevel: "fatal" | "error" | "warn" | "info" | "debug" | "trace" | "silent";
   /** Requests per client address and minute. */
   rateLimitPerMinute: number;
+  /** Redis (Valkey) URL for a rate limit shared by all API instances. Without it each instance counts alone. */
+  rateLimitRedisUrl?: string;
   /** Serve /v1/openapi.json. Defaults to on, except when NODE_ENV is production. */
   openApiEnabled: boolean;
   /** How many organizations one person may create through the API. */
@@ -51,6 +53,7 @@ const envSchema = z.object({
   OIDC_AUDIENCE: z.string().min(1),
   LOG_LEVEL: z.enum(["fatal", "error", "warn", "info", "debug", "trace", "silent"]).default("info"),
   RATE_LIMIT_PER_MINUTE: z.coerce.number().int().min(1).max(1_000_000).default(120),
+  RATE_LIMIT_REDIS_URL: z.string().min(1).optional(),
   OPENAPI_ENABLED: z.enum(["true", "false"]).optional(),
   MAX_ORGANIZATIONS_PER_USER: z.coerce.number().int().min(1).max(1000).default(3),
   S3_ENDPOINT: z.url().optional(),
@@ -85,6 +88,7 @@ export function loadApiConfig(env: Record<string, string | undefined>): ApiConfi
       : values.NODE_ENV !== "production",
     maxOrganizationsPerUser: values.MAX_ORGANIZATIONS_PER_USER,
     tracesExporter: values.OTEL_TRACES_EXPORTER,
+    ...(values.RATE_LIMIT_REDIS_URL ? { rateLimitRedisUrl: values.RATE_LIMIT_REDIS_URL } : {}),
     ...s3Settings(values),
   };
 }

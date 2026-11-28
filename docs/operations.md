@@ -20,7 +20,7 @@ Images (the API image was built and run on 2026-11-28: it started as the unprivi
 - `OIDC_ISSUER`, `OIDC_AUDIENCE`, and the web app's OIDC client settings (see `docs/dev-setup-zitadel.md`).
 - `S3_ENDPOINT`, `S3_BUCKET` and its keys: documents (the API answers 503 `storage_not_configured` without them).
 - Valkey/Redis URL for web sessions.
-- Run the API behind HTTPS. Behind a proxy tell Express to trust it, otherwise the per-address rate limit sees one client (see `platform/rate-limit.ts`).
+- Run the API behind HTTPS. Behind a proxy tell Express to trust it, otherwise the per-address rate limit sees one client (see `platform/rate-limit.ts`). Set `RATE_LIMIT_REDIS_URL` when more than one API instance runs.
 
 ## Deploy order
 
@@ -62,7 +62,7 @@ Documents (S3 bucket) are backed up separately: enable versioning or replication
 - [ ] `DATABASE_URL` (owner) is not available to the running processes.
 - [ ] HTTPS everywhere; HSTS is already sent by the API and the web app.
 - [x] Content Security Policy for the web app: scripts need a per-response nonce (src/proxy.ts), checked in a production build in a real browser on 2026-11-28; styles still allow inline because Tailwind and Next emit style attributes.
-- [ ] Rate limit store shared between API instances (today per instance, in memory).
+- [x] Rate limit shared between API instances: set RATE_LIMIT_REDIS_URL. Verified on 2026-11-28 with two API processes and a local Valkey (5 allowed, then 429 across both). Without it each instance counts alone.
 - [ ] Spending alerts at every hosted provider (ADR 0018).
 - [ ] Backup rehearsal done and written down with the date.
 - [ ] A person is named who receives alerts and can restore.
