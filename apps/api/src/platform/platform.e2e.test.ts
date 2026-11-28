@@ -351,6 +351,8 @@ describe("OpenAPI document", () => {
       "DriverLinkController.create",
       "DriverLinkController.list",
       "DriverLinkController.revoke",
+      "HealthController.live",
+      "HealthController.ready",
       "LocationController.create",
       "LocationController.get",
       "LocationController.list",

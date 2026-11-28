@@ -3,6 +3,7 @@ import { APP_FILTER, DiscoveryModule } from "@nestjs/core";
 import type pg from "pg";
 import type { RuntimeConfig } from "../config/env.ts";
 import { AccessDeclarationCheck } from "./access-declaration-check.ts";
+import { HealthController } from "./health.ts";
 import { loggerModule, type LogOptions } from "./logging.ts";
 import { OpenApiController, OpenApiService } from "./openapi.ts";
 import { ProblemFilter } from "./problem.ts";
@@ -29,7 +30,9 @@ export class PlatformModule {
     return {
       module: PlatformModule,
       imports: [DiscoveryModule, loggerModule(options.log)],
-      controllers: options.openApiEnabled ? [OpenApiController] : [],
+      controllers: options.openApiEnabled
+        ? [OpenApiController, HealthController]
+        : [HealthController],
       providers: [
         { provide: APP_POOL, useValue: options.pool },
         { provide: API_CONFIG, useValue: options.config },
