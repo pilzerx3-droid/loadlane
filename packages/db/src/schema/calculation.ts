@@ -8,6 +8,7 @@ import {
   jsonb,
   pgTable,
   text,
+  unique,
   uuid,
 } from "drizzle-orm/pg-core";
 import { appUser } from "./app-user.ts";
@@ -48,6 +49,7 @@ export const calculation = pgTable(
     createdAt: createdAtColumn(),
   },
   (t) => [
+    unique("calculation_id_org_key").on(t.id, t.organizationId),
     foreignKey({
       name: "calculation_customer_org_fk",
       columns: [t.customerId, t.organizationId],

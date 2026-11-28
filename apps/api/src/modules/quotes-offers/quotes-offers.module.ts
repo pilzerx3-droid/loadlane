@@ -1,5 +1,19 @@
 import { Module } from "@nestjs/common";
+import type pg from "pg";
+import { APP_POOL } from "../../platform/tokens.ts";
+import { QuoteController } from "./quote.controller.ts";
+import { QuoteService } from "./quote-service.ts";
+import { QUOTE_SERVICE } from "./tokens.ts";
 
-/** Quotes and offers. Planned for Phase 5 (freight calculation and quotes). Intentionally empty: no code until its phase starts. */
-@Module({})
+/** Quotes: offers of a frozen calculation's price to a customer. */
+@Module({
+  controllers: [QuoteController],
+  providers: [
+    {
+      provide: QUOTE_SERVICE,
+      inject: [APP_POOL],
+      useFactory: (pool: pg.Pool) => new QuoteService(pool),
+    },
+  ],
+})
 export class QuotesOffersModule {}

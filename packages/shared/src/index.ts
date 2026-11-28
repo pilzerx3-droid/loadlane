@@ -21,6 +21,17 @@ export {
   type TransportStatus,
 } from "./transport-status.ts";
 export {
+  QUOTE_STATUSES,
+  QUOTE_STATUS_LABELS,
+  QUOTE_TRANSITIONS,
+  canQuoteTransition,
+  isQuoteEditable,
+  isQuoteExpired,
+  isQuoteStatus,
+  nextQuoteStatuses,
+  type QuoteStatus,
+} from "./quote-status.ts";
+export {
   COST_KINDS,
   COST_KIND_LABELS,
   calculate,

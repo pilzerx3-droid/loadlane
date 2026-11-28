@@ -34,6 +34,8 @@ const TENANT_TABLES = [
   "last_position",
   "tracking_link",
   "calculation",
+  "quote_counter",
+  "quote",
 ] as const;
 
 /** Tables in schema public that deliberately have no row-level security. */
@@ -121,10 +123,17 @@ async function seedOrganization(
       "INSERT INTO driver_consent (organization_id, driver_link_id, text_version) VALUES ($1, $2, 1)",
       [organizationId, linkRow.rows[0]?.id],
     );
-    await c.query(
+    const calculationRow = await c.query<{ id: string }>(
       `INSERT INTO calculation (organization_id, customer_id, name, engine_version, pricing_mode, input, result, cost_cents, price_cents, contribution_cents, markup_bp, margin_bp, created_by_user_id)
-       VALUES ($1, $2, 'Dallas to Houston', 1, 'markup', '{}', '{}', 90000, 103500, 13500, 1500, 1304, $3)`,
+       VALUES ($1, $2, 'Dallas to Houston', 1, 'markup', '{}', '{}', 90000, 103500, 13500, 1500, 1304, $3) RETURNING id`,
       [organizationId, customerRow.rows[0]?.id, adminUserId],
+    );
+    await c.query("INSERT INTO quote_counter (organization_id, last_number) VALUES ($1, 1)", [
+      organizationId,
+    ]);
+    await c.query(
+      "INSERT INTO quote (organization_id, number, calculation_id, customer_id, price_cents, valid_until, created_by_user_id) VALUES ($1, 1, $2, $3, 103500, current_date + 14, $4)",
+      [organizationId, calculationRow.rows[0]?.id, customerRow.rows[0]?.id, adminUserId],
     );
     await c.query(
       "INSERT INTO tracking_link (organization_id, transport_id, token_hash, expires_at, created_by_user_id) VALUES ($1, $2, $3, now() + interval '2 days', $4)",
@@ -253,6 +262,12 @@ describe("tenant isolation", () => {
       [
         "tracking_link",
         "INSERT INTO tracking_link (organization_id, transport_id, token_hash, expires_at, created_by_user_id) VALUES ($1, gen_random_uuid(), repeat('b', 64), now(), $2)",
+        [orgB, userA],
+      ],
+      ["quote_counter", "INSERT INTO quote_counter (organization_id) VALUES ($1)", [orgB]],
+      [
+        "quote",
+        "INSERT INTO quote (organization_id, number, calculation_id, customer_id, price_cents, valid_until, created_by_user_id) VALUES ($1, 9, gen_random_uuid(), gen_random_uuid(), 1, current_date, $2)",
         [orgB, userA],
       ],
       [
@@ -413,6 +428,34 @@ describe("tenant isolation", () => {
     await insert(100, 90, -10); // a price below cost is a valid, negative contribution
   });
 
+  it("quote: never deleted, only status and draft text can change, statuses stay consistent", async () => {
+    await expectPgError(
+      run({ organizationId: orgA }, (c) => c.query("DELETE FROM quote")),
+      "42501",
+    );
+    await expectPgError(
+      run({ organizationId: orgA }, (c) => c.query("UPDATE quote SET price_cents = 1")),
+      "42501",
+    );
+    await expectPgError(
+      run({ organizationId: orgA }, (c) => c.query("UPDATE quote SET status = 'sent'")),
+      "23514", // a sent quote needs sent_at
+    );
+    await expectPgError(
+      run({ organizationId: orgA }, (c) =>
+        c.query("UPDATE quote SET status = 'accepted', sent_at = now()"),
+      ),
+      "23514", // an accepted quote needs decided_at
+    );
+    const other = await run({ organizationId: orgA }, (c) =>
+      c.query("UPDATE quote SET notes = 'hacked' WHERE organization_id = $1", [orgB]),
+    );
+    expect(other.rowCount).toBe(0);
+    await run({ organizationId: orgA }, (c) =>
+      c.query("UPDATE quote SET status = 'sent', sent_at = now()"),
+    );
+  });
+
   it("position_event: cannot be updated, other organizations cannot delete, bad coordinates fail", async () => {
     await expectPgError(
       run({ organizationId: orgA }, (c) => c.query("UPDATE position_event SET latitude = 0")),
@@ -461,6 +504,8 @@ describe("tenant isolation", () => {
       "last_position",
       "tracking_link",
       "calculation",
+      "quote_counter",
+      "quote",
     ]) {
       expect(await count({}, `FROM ${table}`), table).toBe(0);
     }
