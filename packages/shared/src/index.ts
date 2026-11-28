@@ -21,6 +21,19 @@ export {
   type TransportStatus,
 } from "./transport-status.ts";
 export {
+  MoneyError,
+  analyzePrice,
+  formatPercent,
+  formatUsd,
+  priceFromContribution,
+  priceFromMargin,
+  priceFromMarkup,
+  sumCents,
+  type BasisPoints,
+  type Cents,
+  type PriceAnalysis,
+} from "./money.ts";
+export {
   ALERT_CONDITIONS,
   ALERT_LABELS,
   alertConditions,
