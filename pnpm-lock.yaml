@@ -317,7 +317,7 @@ importers:
         version: 1.81.0(@types/react@19.3.3)(react@19.3.1)
       next:
         specifier: ^16.4.6
-        version: 16.4.6(@types/node@26.6.11)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
+        version: 16.4.6(@opentelemetry/api@1.10.0)(@types/node@26.6.11)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
       next-themes:
         specifier: ^0.4.6
         version: 0.4.6(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
@@ -348,9 +348,20 @@ importers:
         version: 19.3.0(@types/react@19.3.3)
       vitest:
         specifier: ^5.1.2
-        version: 5.1.2(@types/node@26.6.11)(vite@8.4.0(@types/node@26.6.11)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15))
+        version: 5.1.2(@opentelemetry/api@1.10.0)(@types/node@26.6.11)(vite@8.4.0(@types/node@26.6.11)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15))
 
-  apps/worker: {}
+  apps/worker:
+    dependencies:
+      '@loadlane/db':
+        specifier: workspace:*
+        version: link:../../packages/db
+      pg:
+        specifier: ^8.23.1
+        version: 8.23.1
+    devDependencies:
+      '@types/pg':
+        specifier: ^8.23.1
+        version: 8.23.1
 
   packages/db:
     dependencies:
@@ -405,7 +416,7 @@ importers:
         version: 19.3.1(react@19.3.1)
       vitest:
         specifier: ^5.1.2
-        version: 5.1.2(@types/node@26.6.11)(vite@8.4.0(@types/node@26.6.11)(esbuild@0.28.2)(tsx@4.23.15))
+        version: 5.1.2(@opentelemetry/api@1.10.0)(@types/node@26.6.11)(vite@8.4.0(@types/node@26.6.11)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15))
 
 packages:
 
@@ -5820,15 +5831,6 @@ snapshots:
     optionalDependencies:
       vite: 8.4.0(@types/node@26.6.11)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)
 
-  '@vitest/mocker@5.1.2(vite@8.4.0(@types/node@26.6.11)(esbuild@0.28.2)(tsx@4.23.15))':
-    dependencies:
-      '@jridgewell/trace-mapping': 0.3.31
-      '@vitest/spy': 5.1.2
-      estree-walker: 3.0.3
-      magic-string: 1.4.5
-    optionalDependencies:
-      vite: 8.4.0(@types/node@26.6.11)(esbuild@0.28.2)(tsx@4.23.15)
-
   '@vitest/spy@5.1.2': {}
 
   accepts@2.0.0:
@@ -6487,7 +6489,7 @@ snapshots:
       react: 19.3.1
       react-dom: 19.3.1(react@19.3.1)
 
-  next@16.4.6(@types/node@26.6.11)(react-dom@19.3.1(react@19.3.1))(react@19.3.1):
+  next@16.4.6(@opentelemetry/api@1.10.0)(@types/node@26.6.11)(react-dom@19.3.1(react@19.3.1))(react@19.3.1):
     dependencies:
       '@next/env': 16.4.6
       '@swc/helpers': 0.5.23
@@ -6506,6 +6508,7 @@ snapshots:
       '@next/swc-linux-x64-musl': 16.4.6
       '@next/swc-win32-arm64-msvc': 16.4.6
       '@next/swc-win32-x64-msvc': 16.4.6
+      '@opentelemetry/api': 1.10.0
       sharp: 0.35.5(@types/node@26.6.11)
     transitivePeerDependencies:
       - '@babel/core'
@@ -7075,20 +7078,6 @@ snapshots:
       napi-windows-process-start-time: 0.1.0
       tsx: 4.23.15
 
-  vite@8.4.0(@types/node@26.6.11)(esbuild@0.28.2)(tsx@4.23.15):
-    dependencies:
-      lightningcss: 1.33.0
-      picomatch: 4.0.7
-      postcss: 8.5.33
-      rolldown: 1.3.3
-      tinyglobby: 0.2.17
-    optionalDependencies:
-      '@types/node': 26.6.11
-      esbuild: 0.28.2
-      fsevents: 2.3.3
-      napi-windows-process-start-time: 0.1.0
-      tsx: 4.23.15
-
   vitest@5.1.2(@opentelemetry/api@1.10.0)(@types/node@26.6.11)(vite@8.4.0(@types/node@26.6.11)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)):
     dependencies:
       '@types/chai': 5.2.3
@@ -7107,48 +7096,6 @@ snapshots:
       why-is-node-running: 3.2.1
     optionalDependencies:
       '@opentelemetry/api': 1.10.0
-      '@types/node': 26.6.11
-    transitivePeerDependencies:
-      - msw
-
-  vitest@5.1.2(@types/node@26.6.11)(vite@8.4.0(@types/node@26.6.11)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)):
-    dependencies:
-      '@types/chai': 5.2.3
-      '@vitest/mocker': 5.1.2(vite@8.4.0(@types/node@26.6.11)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15))
-      chai: 6.3.0
-      es-module-lexer: 2.3.2
-      expect-type: 1.4.0
-      magic-string: 1.4.5
-      obug: 3.0.0
-      picomatch: 4.0.7
-      std-env: 4.3.0
-      tinybench: 6.2.5
-      tinyexec: 1.4.0
-      tinyglobby: 0.2.17
-      vite: 8.4.0(@types/node@26.6.11)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)
-      why-is-node-running: 3.2.1
-    optionalDependencies:
-      '@types/node': 26.6.11
-    transitivePeerDependencies:
-      - msw
-
-  vitest@5.1.2(@types/node@26.6.11)(vite@8.4.0(@types/node@26.6.11)(esbuild@0.28.2)(tsx@4.23.15)):
-    dependencies:
-      '@types/chai': 5.2.3
-      '@vitest/mocker': 5.1.2(vite@8.4.0(@types/node@26.6.11)(esbuild@0.28.2)(tsx@4.23.15))
-      chai: 6.3.0
-      es-module-lexer: 2.3.2
-      expect-type: 1.4.0
-      magic-string: 1.4.5
-      obug: 3.0.0
-      picomatch: 4.0.7
-      std-env: 4.3.0
-      tinybench: 6.2.5
-      tinyexec: 1.4.0
-      tinyglobby: 0.2.17
-      vite: 8.4.0(@types/node@26.6.11)(esbuild@0.28.2)(tsx@4.23.15)
-      why-is-node-running: 3.2.1
-    optionalDependencies:
       '@types/node': 26.6.11
     transitivePeerDependencies:
       - msw

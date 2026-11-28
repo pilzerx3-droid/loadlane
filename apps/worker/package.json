@@ -2,13 +2,21 @@
   "name": "@loadlane/worker",
   "version": "0.0.0",
   "private": true,
-  "description": "Background job worker (BullMQ)",
+  "description": "Background job worker: retention of driver positions today, BullMQ jobs later",
   "type": "module",
   "exports": {
     ".": "./src/index.ts"
   },
   "scripts": {
+    "start": "node src/main.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "@loadlane/db": "workspace:*",
+    "pg": "^8.23.1"
+  },
+  "devDependencies": {
+    "@types/pg": "^8.23.1"
   }
 }

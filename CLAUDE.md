@@ -51,6 +51,7 @@ Requires Node 26+, pnpm 12, Docker Desktop. Copy `.env.example` to `.env` first.
 - `pnpm db:check`: fail on schema/migration drift (needs migrations committed)
 - `pnpm api:start`: build and start the API on port 4000 (needs the OIDC settings, see docs/dev-setup-zitadel.md)
 - `pnpm web:dev`: start the web app on port 3000
+- `pnpm worker:start`: start the background worker (daily deletion of old driver positions, needs `APP_DATABASE_URL`)
 
 Tenant isolation (ADR 0002): application code reads and writes only through `withTenant()` from `@loadlane/db`, connected as `loadlane_app` (`APP_DATABASE_URL`). Never use the owner connection (`DATABASE_URL`) outside migrations and test setup. Every new table needs forced RLS, policies, minimal grants and a two-organization test in `packages/db/src/rls.test.ts`. After pulling P1-05, run `pnpm infra:reset` once: it recreates the local volumes so the `loadlane_app` login is created.
 

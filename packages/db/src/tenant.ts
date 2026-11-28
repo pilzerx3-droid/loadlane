@@ -25,6 +25,11 @@ export interface TenantContext {
   trackingTokenHash?: string;
   /** SHA-256 hex of a presented spot freight invitation token (migration 0014). */
   spotTokenHash?: string;
+  /**
+   * Set only by the retention job (migration 0015): lets it list organizations to visit them one by
+   * one. Everything it deletes is still limited by the organization it acts for.
+   */
+  retentionJob?: boolean;
 }
 
 export interface TenantSession {
@@ -73,6 +78,7 @@ export async function withTenant<T>(
   const driverTokenHash = assertText("driverTokenHash", context.driverTokenHash);
   const trackingTokenHash = assertText("trackingTokenHash", context.trackingTokenHash);
   const spotTokenHash = assertText("spotTokenHash", context.spotTokenHash);
+  const retentionJob = context.retentionJob === true ? "on" : "";
 
   const client = await pool.connect();
   let brokenConnection: Error | undefined;
@@ -83,7 +89,8 @@ export async function withTenant<T>(
               set_config('app.auth_issuer', $3, true), set_config('app.auth_subject', $4, true),
               set_config('app.driver_token_hash', $5, true),
               set_config('app.tracking_token_hash', $6, true),
-              set_config('app.spot_token_hash', $7, true)`,
+              set_config('app.spot_token_hash', $7, true),
+              set_config('app.retention_job', $8, true)`,
       [
         organizationId,
         userId,
@@ -92,6 +99,7 @@ export async function withTenant<T>(
         driverTokenHash,
         trackingTokenHash,
         spotTokenHash,
+        retentionJob,
       ],
     );
     const result = await fn({ db: drizzle({ client, schema }), client });

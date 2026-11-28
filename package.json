@@ -21,7 +21,8 @@
     "db:generate": "pnpm --filter @loadlane/db run db:generate",
     "db:check": "pnpm --filter @loadlane/db run db:check",
     "api:start": "pnpm --filter @loadlane/api run build && pnpm --filter @loadlane/api run start",
-    "web:dev": "pnpm --filter @loadlane/web run dev"
+    "web:dev": "pnpm --filter @loadlane/web run dev",
+    "worker:start": "pnpm --filter @loadlane/worker run start"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

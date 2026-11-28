@@ -3,6 +3,7 @@ import {
   char,
   check,
   index,
+  integer,
   pgEnum,
   pgTable,
   text,
@@ -34,6 +35,11 @@ export const organization = pgTable(
     currency: char("currency", { length: 3 }).notNull().default("USD"),
     locale: text("locale").notNull().default("en-US"),
     timezone: text("timezone").notNull(),
+    /**
+     * Days after a transport is finished (delivered, completed or cancelled) before its driver
+     * positions are deleted (ADR 0015). 30 until the product owner confirms the legal period.
+     */
+    positionRetentionDays: integer("position_retention_days").notNull().default(30),
     createdAt: createdAtColumn(),
     updatedAt: updatedAtColumn(),
     deletedAt: timestamp("deleted_at", { withTimezone: true, mode: "date" }),
@@ -45,5 +51,9 @@ export const organization = pgTable(
     index("organization_created_by_idx").on(t.createdByUserId),
     check("organization_slug_format", sql`${t.slug} ~ '^[a-z0-9]+(-[a-z0-9]+)*$'`),
     check("organization_currency_format", sql`${t.currency} ~ '^[A-Z]{3}$'`),
+    check(
+      "organization_position_retention_range",
+      sql`${t.positionRetentionDays} BETWEEN 1 AND 3650`,
+    ),
   ],
 );

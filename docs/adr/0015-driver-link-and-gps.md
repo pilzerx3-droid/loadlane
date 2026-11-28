@@ -1,6 +1,6 @@
 # ADR 0015: Driver Link and GPS tracking
 
-Status: Accepted (Phase 3, implemented except the retention job). Builds on ADR 0006 (positions as events) and ADR 0014 (transports).
+Status: Accepted (Phase 3, implemented). Builds on ADR 0006 (positions as events) and ADR 0014 (transports).
 
 ## Context
 
