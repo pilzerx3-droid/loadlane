@@ -275,13 +275,21 @@ export async function TransportDetailPage({ id, problem }: { id: string; problem
         title={transport.reference}
         description={<TransportStatusBadge status={transport.status} />}
         actions={
-          canManage && transport.editable ? (
-            <Button asChild variant="outline">
-              <a href={`/transports/${transport.id}/edit`}>
-                <Pencil aria-hidden="true" /> Edit
-              </a>
-            </Button>
-          ) : undefined
+          <div className="flex flex-wrap gap-2">
+            {viewer.active.permissions.includes("spot:manage") &&
+            (transport.status === "created" || transport.status === "planned") ? (
+              <Button asChild variant="outline">
+                <a href={`/spot/new?transport=${transport.id}`}>Offer to carriers</a>
+              </Button>
+            ) : null}
+            {canManage && transport.editable ? (
+              <Button asChild variant="outline">
+                <a href={`/transports/${transport.id}/edit`}>
+                  <Pencil aria-hidden="true" /> Edit
+                </a>
+              </Button>
+            ) : null}
+          </div>
         }
       />
       {problem && PROBLEMS[problem] ? (

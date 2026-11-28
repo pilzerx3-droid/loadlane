@@ -4,6 +4,7 @@ export type NavIcon =
   | "alerts"
   | "calculator"
   | "quotes"
+  | "spot"
   | "transports"
   | "customers"
   | "carriers"
@@ -35,6 +36,7 @@ export const NAV_ITEMS: readonly NavItem[] = [
     requires: "calculation:read",
   },
   { href: "/quotes", label: "Quotes", icon: "quotes", requires: "quote:read" },
+  { href: "/spot", label: "Spot freight", icon: "spot", requires: "spot:read" },
   { href: "/customers", label: "Customers", icon: "customers", requires: "customer:read" },
   { href: "/carriers", label: "Carriers", icon: "carriers", requires: "carrier:read" },
   { href: "/locations", label: "Locations", icon: "locations", requires: "location:read" },
