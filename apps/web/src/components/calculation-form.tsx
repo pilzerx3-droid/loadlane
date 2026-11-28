@@ -14,6 +14,7 @@ import {
   type CalcFormValues,
   type PricingMode,
 } from "../lib/calculation-form";
+import { CalculationTariffPanel, type TariffOption } from "./calculation-tariff-panel";
 import { Notice } from "./notices";
 import { PriceSummary } from "./price-summary";
 
@@ -23,7 +24,14 @@ export interface CustomerOption {
 }
 
 /** The freight calculator: cost lines, a pricing method and a live result from the same engine the API uses. */
-export function CalculationForm({ customers }: { customers: CustomerOption[] }) {
+export function CalculationForm({
+  customers,
+  tariffs = [],
+}: {
+  customers: CustomerOption[];
+  tariffs?: TariffOption[];
+}) {
+  const [filledFrom, setFilledFrom] = useState<string[]>([]);
   const initial: CalcFormState = { payload: "", errors: {} };
   const [state, action, pending] = useActionState(saveCalculationAction, initial);
   const [values, setValues] = useState<CalcFormValues>(
@@ -77,6 +85,28 @@ export function CalculationForm({ customers }: { customers: CustomerOption[] }) 
           </div>
         </div>
       </Card>
+
+      <CalculationTariffPanel
+        tariffs={tariffs}
+        onFill={(fill) => {
+          const existing = values.lines.filter(
+            (line) => line.label.trim() !== "" || line.amount.trim() !== "",
+          );
+          set({
+            lines: [...existing, ...fill.lines],
+            tariffVersionIds: values.tariffVersionIds.includes(fill.versionId)
+              ? values.tariffVersionIds
+              : [...values.tariffVersionIds, fill.versionId],
+          });
+          setFilledFrom((current) => [...current, fill.description]);
+        }}
+      />
+      {filledFrom.length > 0 ? (
+        <p className="text-sm text-muted-foreground">
+          Cost lines were filled from: {filledFrom.join("; ")}. These versions are recorded when you
+          save.
+        </p>
+      ) : null}
 
       <Card className="space-y-3 p-5">
         <h2 className="text-base font-semibold">Cost lines</h2>

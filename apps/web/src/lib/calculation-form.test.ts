@@ -15,6 +15,7 @@ const valid: CalcFormValues = {
   ],
   mode: "markup",
   value: "15",
+  tariffVersionIds: [],
 };
 
 describe("buildCalculation", () => {
@@ -66,6 +67,20 @@ describe("buildCalculation", () => {
     expect(!margin.ok && margin.errors["value"]).toMatch(/100 %/);
     const customer = buildCalculation({ ...valid, customerId: "not-a-uuid" });
     expect(!customer.ok && customer.errors["customerId"]).toBeTruthy();
+  });
+
+  it("passes the tariff versions the lines came from to the API and keeps only valid ids", () => {
+    const id = "11111111-1111-4111-8111-111111111111";
+    const built = buildCalculation({ ...valid, tariffVersionIds: [id] });
+    expect(built.ok && built.input.tariffVersionIds).toEqual([id]);
+    expect(
+      buildCalculation(valid).ok &&
+        "tariffVersionIds" in (buildCalculation(valid) as { input: object }).input,
+    ).toBe(false);
+    const parsed = parseCalcPayload(
+      JSON.stringify({ ...valid, tariffVersionIds: [id, "nope", 5] }),
+    );
+    expect(parsed.tariffVersionIds).toEqual([id]);
   });
 
   it("needs at least one line", () => {

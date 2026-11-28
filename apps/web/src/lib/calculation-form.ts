@@ -35,6 +35,8 @@ export interface CalcFormValues {
   mode: PricingMode;
   /** A percentage for markup and margin, dollars for contribution and price. */
   value: string;
+  /** Tariff versions the cost lines were filled from; recorded in the saved calculation. */
+  tariffVersionIds: string[];
 }
 
 export function emptyCalcForm(): CalcFormValues {
@@ -44,12 +46,14 @@ export function emptyCalcForm(): CalcFormValues {
     lines: [{ kind: "base_freight", label: "Carrier rate", amount: "" }],
     mode: "margin",
     value: "",
+    tariffVersionIds: [],
   };
 }
 
 export type CalcInput = {
   name: string;
   customerId?: string;
+  tariffVersionIds?: string[];
   lines: { kind: CostKind; label: string; amountCents: number }[];
   pricing:
     | { mode: "markup"; rateBp: number }
@@ -129,6 +133,9 @@ export function buildCalculation(values: CalcFormValues): CalcBuild {
       lines,
       pricing,
       ...(values.customerId === "" ? {} : { customerId: values.customerId }),
+      ...(values.tariffVersionIds.length === 0
+        ? {}
+        : { tariffVersionIds: values.tariffVersionIds }),
     };
     return { ok: true, input, preview };
   } catch (error) {
@@ -171,5 +178,10 @@ export function parseCalcPayload(text: string): CalcFormValues {
     lines,
     mode,
     value: str(value["value"]),
+    tariffVersionIds: Array.isArray(value["tariffVersionIds"])
+      ? (value["tariffVersionIds"] as unknown[])
+          .filter((id): id is string => typeof id === "string" && UUID.test(id))
+          .slice(0, 10)
+      : [],
   };
 }

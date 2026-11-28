@@ -55,6 +55,7 @@ describe("navigationFor", () => {
       "/transports",
       "/alerts",
       "/calculations",
+      "/tariffs",
       "/quotes",
       "/spot",
       "/customers",

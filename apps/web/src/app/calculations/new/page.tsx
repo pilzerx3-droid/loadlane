@@ -5,6 +5,7 @@ import { CalculationForm } from "../../../components/calculation-form";
 import { ForbiddenNotice, Notice } from "../../../components/notices";
 import { apiRequest } from "../../../lib/api-client";
 import { getAuthDeps } from "../../../lib/deps";
+import { tariffListSchema } from "../../../lib/tariffs";
 import { optionListSchema } from "../../../lib/transport-api";
 import { requireOrganizationPage } from "../../../lib/viewer";
 
@@ -17,15 +18,19 @@ export default async function NewCalculationPage() {
   if (!allowed) {
     content = <ForbiddenNotice />;
   } else {
-    const customers = viewer.active.permissions.includes("customer:read")
-      ? await apiRequest({
-          apiUrl: getAuthDeps().config.apiUrl,
-          accessToken: viewer.accessToken,
-          organizationId: viewer.active.id,
-          path: "/v1/customers?limit=100",
-          schema: optionListSchema,
-        })
-      : undefined;
+    const base = {
+      apiUrl: getAuthDeps().config.apiUrl,
+      accessToken: viewer.accessToken,
+      organizationId: viewer.active.id,
+    };
+    const [customers, tariffs] = await Promise.all([
+      viewer.active.permissions.includes("customer:read")
+        ? apiRequest({ ...base, path: "/v1/customers?limit=100", schema: optionListSchema })
+        : undefined,
+      viewer.active.permissions.includes("tariff:read")
+        ? apiRequest({ ...base, path: "/v1/tariffs?limit=100", schema: tariffListSchema })
+        : undefined,
+    ]);
     content =
       customers && !customers.ok ? (
         <Notice>The customers could not be loaded right now. Please try again in a moment.</Notice>
@@ -34,6 +39,10 @@ export default async function NewCalculationPage() {
           customers={(customers?.data.items ?? []).map((item) => ({
             id: item.id,
             label: item.name,
+          }))}
+          tariffs={(tariffs?.ok ? tariffs.data.items : []).map((item) => ({
+            id: item.id,
+            label: `${item.name} (${item.kind === "sell" ? "sell" : "buy"})`,
           }))}
         />
       );
