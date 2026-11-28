@@ -62,6 +62,7 @@ describe("navigationFor", () => {
       "/customers",
       "/carriers",
       "/locations",
+      "/integrations",
       "/members",
       "/activity",
       "/settings",

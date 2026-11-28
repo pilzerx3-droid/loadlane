@@ -22,5 +22,7 @@ import { TRANSPORT_IMPORTER, TRANSPORT_SERVICE } from "./tokens.ts";
         new TransportImporter(pool, service),
     },
   ],
+  // The integrations module creates transports for API keys through the same service and rules.
+  exports: [TRANSPORT_SERVICE],
 })
 export class TransportOrdersModule {}

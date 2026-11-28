@@ -35,6 +35,7 @@ export const PERMISSIONS = [
   "tariff:read",
   "tariff:manage",
   "report:read",
+  "integration:manage",
 ] as const;
 export type Permission = (typeof PERMISSIONS)[number];
 

@@ -22,8 +22,11 @@ import type {
 
 export interface TransportContext {
   organizationId: string;
+  /** The person acting, or for an integration the person who owns the API key. */
   userId: string;
   requestId?: string | undefined;
+  /** Set when an API key, not a person, acts: history and audit then say so. */
+  apiKeyId?: string | undefined;
 }
 
 /** Statuses in which fields and stops may still be changed: before the freight is on the road. */
@@ -285,12 +288,13 @@ export class TransportService {
       await this.insertStops(client, context, id, input.stops);
       await client.query(
         `INSERT INTO transport_event (organization_id, transport_id, source, actor_user_id, from_status, to_status, note)
-         VALUES ($1, $2, 'user', $3, NULL, 'created', $4)`,
+         VALUES ($1, $2, $5::transport_event_source, $3, NULL, 'created', $4)`,
         [
           context.organizationId,
           id,
-          context.userId,
+          context.apiKeyId ? null : context.userId,
           input.quoteId ? "Created from an accepted quote" : null,
+          context.apiKeyId ? "integration" : "user",
         ],
       );
       if (input.quoteId) await this.linkQuote(client, context, input.quoteId, input.customerId, id);
@@ -606,16 +610,18 @@ export class TransportService {
     changes: unknown,
   ): Promise<void> {
     // OPEN (legal, ADR 0002): ip and user agent are not recorded until their retention is decided.
+    const viaKey = context.apiKeyId !== undefined;
     await client.query(
       `INSERT INTO audit_log (organization_id, actor_type, actor_user_id, action, entity_type, entity_id, changes, request_id)
-       VALUES ($1, 'user', $2, $3, 'transport', $4, $5, $6)`,
+       VALUES ($1, $7::audit_actor_type, $2, $3, 'transport', $4, $5, $6)`,
       [
         context.organizationId,
-        context.userId,
+        viaKey ? null : context.userId,
         action,
         entityId,
-        JSON.stringify(changes),
+        JSON.stringify(viaKey ? { ...(changes as object), apiKeyId: context.apiKeyId } : changes),
         context.requestId ?? null,
+        viaKey ? "api_key" : "user",
       ],
     );
   }

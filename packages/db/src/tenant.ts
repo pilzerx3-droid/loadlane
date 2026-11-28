@@ -30,6 +30,8 @@ export interface TenantContext {
    * one. Everything it deletes is still limited by the organization it acts for.
    */
   retentionJob?: boolean;
+  /** SHA-256 hex of a presented API key (migration 0018). Makes exactly that key's row visible. */
+  apiKeyHash?: string;
 }
 
 export interface TenantSession {
@@ -79,6 +81,7 @@ export async function withTenant<T>(
   const trackingTokenHash = assertText("trackingTokenHash", context.trackingTokenHash);
   const spotTokenHash = assertText("spotTokenHash", context.spotTokenHash);
   const retentionJob = context.retentionJob === true ? "on" : "";
+  const apiKeyHash = assertText("apiKeyHash", context.apiKeyHash);
 
   const client = await pool.connect();
   let brokenConnection: Error | undefined;
@@ -90,7 +93,8 @@ export async function withTenant<T>(
               set_config('app.driver_token_hash', $5, true),
               set_config('app.tracking_token_hash', $6, true),
               set_config('app.spot_token_hash', $7, true),
-              set_config('app.retention_job', $8, true)`,
+              set_config('app.retention_job', $8, true),
+              set_config('app.api_key_hash', $9, true)`,
       [
         organizationId,
         userId,
@@ -100,6 +104,7 @@ export async function withTenant<T>(
         trackingTokenHash,
         spotTokenHash,
         retentionJob,
+        apiKeyHash,
       ],
     );
     const result = await fn({ db: drizzle({ client, schema }), client });

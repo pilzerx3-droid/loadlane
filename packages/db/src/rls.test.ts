@@ -41,6 +41,8 @@ const TENANT_TABLES = [
   "spot_bid",
   "tariff",
   "tariff_version",
+  "api_key",
+  "external_ref",
 ] as const;
 
 /** Tables in schema public that deliberately have no row-level security. */
@@ -140,6 +142,18 @@ async function seedOrganization(
     await c.query(
       "INSERT INTO quote (organization_id, number, calculation_id, customer_id, price_cents, valid_until, created_by_user_id) VALUES ($1, 1, $2, $3, 103500, current_date + 14, $4)",
       [organizationId, calculationRow.rows[0]?.id, customerRow.rows[0]?.id, adminUserId],
+    );
+    const keyRow = await c.query<{ id: string }>(
+      "INSERT INTO api_key (organization_id, name, key_prefix, key_hash, scopes, created_by_user_id) VALUES ($1, 'ERP', 'll_live_ab12', $2, ARRAY['transport:write'], $3) RETURNING id",
+      [
+        organizationId,
+        createHash("sha256").update(`key-${organizationId}`).digest("hex"),
+        adminUserId,
+      ],
+    );
+    await c.query(
+      "INSERT INTO external_ref (organization_id, api_key_id, entity_type, external_id, internal_id, request_hash) VALUES ($1, $2, 'transport', 'SAP-1', $3, 'h')",
+      [organizationId, keyRow.rows[0]?.id, transportRow.rows[0]?.id],
     );
     const tariffRow = await c.query<{ id: string }>(
       "INSERT INTO tariff (organization_id, name, kind, customer_id, created_by_user_id) VALUES ($1, 'Acme sell', 'sell', $2, $3) RETURNING id",
@@ -297,6 +311,16 @@ describe("tenant isolation", () => {
         [orgB, userA],
       ],
       ["quote_counter", "INSERT INTO quote_counter (organization_id) VALUES ($1)", [orgB]],
+      [
+        "api_key",
+        "INSERT INTO api_key (organization_id, name, key_prefix, key_hash, scopes, created_by_user_id) VALUES ($1, 'Forged', 'x', repeat('d', 64), ARRAY['transport:write'], $2)",
+        [orgB, userA],
+      ],
+      [
+        "external_ref",
+        "INSERT INTO external_ref (organization_id, api_key_id, entity_type, external_id, internal_id, request_hash) VALUES ($1, gen_random_uuid(), 'transport', 'X', gen_random_uuid(), 'h')",
+        [orgB],
+      ],
       [
         "tariff",
         "INSERT INTO tariff (organization_id, name, kind, created_by_user_id) VALUES ($1, 'Forged', 'sell', $2)",
@@ -603,6 +627,54 @@ describe("tenant isolation", () => {
     );
   });
 
+  it("api_key: a presented key reveals only itself, only usage and revocation change, nothing is deleted", async () => {
+    const hash = createHash("sha256").update(`key-${orgA}`).digest("hex");
+    const own = await run({ apiKeyHash: hash }, (c) =>
+      c.query<{ organization_id: string }>("SELECT organization_id FROM api_key"),
+    );
+    expect(own.rows.map((row) => row.organization_id)).toEqual([orgA]);
+    expect(await count({ apiKeyHash: "0".repeat(64) }, "FROM api_key")).toBe(0);
+    expect(await count({ apiKeyHash: hash }, "FROM external_ref")).toBe(0);
+    const touch = await run({ apiKeyHash: hash }, (c) =>
+      c.query("UPDATE api_key SET last_used_at = now()"),
+    );
+    expect(touch.rowCount).toBe(0); // the key alone cannot change anything
+    await run({ organizationId: orgA }, (c) => c.query("UPDATE api_key SET last_used_at = now()"));
+    await expectPgError(
+      run({ organizationId: orgA }, (c) => c.query("UPDATE api_key SET scopes = ARRAY['x']")),
+      "42501",
+    );
+    await expectPgError(
+      run({ organizationId: orgA }, (c) => c.query("DELETE FROM api_key")),
+      "42501",
+    );
+    await expectPgError(
+      run({ organizationId: orgA }, (c) =>
+        c.query("UPDATE external_ref SET internal_id = gen_random_uuid()"),
+      ),
+      "42501",
+    );
+    await expectPgError(
+      run({ organizationId: orgA }, (c) => c.query("DELETE FROM external_ref")),
+      "42501",
+    );
+    // The same external object cannot be registered twice.
+    await expectPgError(
+      run({ organizationId: orgA }, async (c) => {
+        const row = (
+          await c.query<{ api_key_id: string; internal_id: string }>(
+            "SELECT api_key_id, internal_id FROM external_ref",
+          )
+        ).rows[0];
+        await c.query(
+          "INSERT INTO external_ref (organization_id, api_key_id, entity_type, external_id, internal_id, request_hash) VALUES ($1, $2, 'transport', 'SAP-1', $3, 'h2')",
+          [orgA, row?.api_key_id, row?.internal_id],
+        );
+      }),
+      "23505",
+    );
+  });
+
   it("position_event: cannot be updated, other organizations cannot delete, bad coordinates fail", async () => {
     await expectPgError(
       run({ organizationId: orgA }, (c) => c.query("UPDATE position_event SET latitude = 0")),
@@ -658,6 +730,8 @@ describe("tenant isolation", () => {
       "spot_bid",
       "tariff",
       "tariff_version",
+      "api_key",
+      "external_ref",
     ]) {
       expect(await count({}, `FROM ${table}`), table).toBe(0);
     }

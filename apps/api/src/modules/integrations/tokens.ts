@@ -1,0 +1,2 @@
+export const API_KEY_SERVICE = Symbol("API_KEY_SERVICE");
+export const INTEGRATION_SERVICE = Symbol("INTEGRATION_SERVICE");

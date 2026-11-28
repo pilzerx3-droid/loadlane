@@ -7,6 +7,7 @@ export type NavIcon =
   | "spot"
   | "tariffs"
   | "reports"
+  | "integrations"
   | "transports"
   | "customers"
   | "carriers"
@@ -44,6 +45,12 @@ export const NAV_ITEMS: readonly NavItem[] = [
   { href: "/customers", label: "Customers", icon: "customers", requires: "customer:read" },
   { href: "/carriers", label: "Carriers", icon: "carriers", requires: "carrier:read" },
   { href: "/locations", label: "Locations", icon: "locations", requires: "location:read" },
+  {
+    href: "/integrations",
+    label: "Integrations",
+    icon: "integrations",
+    requires: "integration:manage",
+  },
   { href: "/members", label: "Members", icon: "members", requires: "member:read" },
   { href: "/activity", label: "Activity", icon: "activity", requires: "audit:read" },
   { href: "/settings", label: "Settings", icon: "settings", requires: "organization:read" },

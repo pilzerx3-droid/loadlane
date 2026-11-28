@@ -127,6 +127,13 @@
       "when": 1795860293453,
       "tag": "0017_quote_transport",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1795860887973,
+      "tag": "0018_integration",
+      "breakpoints": true
     }
   ]
 }

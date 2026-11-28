@@ -326,6 +326,9 @@ describe("OpenAPI document", () => {
   it("lists every route the application has, and every route has an access rule", () => {
     const routes = discoverRoutes(api.app.get(DiscoveryService), api.app.get(Reflector));
     expect(routes.map((route) => route.name).sort()).toEqual([
+      "ApiKeyController.create",
+      "ApiKeyController.list",
+      "ApiKeyController.revoke",
       "AuditController.list",
       "CalculationController.create",
       "CalculationController.get",
@@ -353,6 +356,8 @@ describe("OpenAPI document", () => {
       "DriverLinkController.revoke",
       "HealthController.live",
       "HealthController.ready",
+      "IntegrationController.lookups",
+      "IntegrationController.transports",
       "LocationController.create",
       "LocationController.get",
       "LocationController.list",
