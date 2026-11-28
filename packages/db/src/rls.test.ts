@@ -39,6 +39,8 @@ const TENANT_TABLES = [
   "spot_tender",
   "spot_invitation",
   "spot_bid",
+  "tariff",
+  "tariff_version",
 ] as const;
 
 /** Tables in schema public that deliberately have no row-level security. */
@@ -138,6 +140,14 @@ async function seedOrganization(
     await c.query(
       "INSERT INTO quote (organization_id, number, calculation_id, customer_id, price_cents, valid_until, created_by_user_id) VALUES ($1, 1, $2, $3, 103500, current_date + 14, $4)",
       [organizationId, calculationRow.rows[0]?.id, customerRow.rows[0]?.id, adminUserId],
+    );
+    const tariffRow = await c.query<{ id: string }>(
+      "INSERT INTO tariff (organization_id, name, kind, customer_id, created_by_user_id) VALUES ($1, 'Acme sell', 'sell', $2, $3) RETURNING id",
+      [organizationId, customerRow.rows[0]?.id, adminUserId],
+    );
+    await c.query(
+      "INSERT INTO tariff_version (organization_id, tariff_id, version, valid_from, lines, created_by_user_id) VALUES ($1, $2, 1, current_date, '[]', $3)",
+      [organizationId, tariffRow.rows[0]?.id, adminUserId],
     );
     const tenderRow = await c.query<{ id: string }>(
       "INSERT INTO spot_tender (organization_id, transport_id, response_deadline, created_by_user_id) VALUES ($1, $2, now() + interval '1 day', $3) RETURNING id",
@@ -287,6 +297,16 @@ describe("tenant isolation", () => {
         [orgB, userA],
       ],
       ["quote_counter", "INSERT INTO quote_counter (organization_id) VALUES ($1)", [orgB]],
+      [
+        "tariff",
+        "INSERT INTO tariff (organization_id, name, kind, created_by_user_id) VALUES ($1, 'Forged', 'sell', $2)",
+        [orgB, userA],
+      ],
+      [
+        "tariff_version",
+        "INSERT INTO tariff_version (organization_id, tariff_id, version, valid_from, lines, created_by_user_id) VALUES ($1, gen_random_uuid(), 1, current_date, '[]', $2)",
+        [orgB, userA],
+      ],
       [
         "spot_tender",
         "INSERT INTO spot_tender (organization_id, transport_id, response_deadline, created_by_user_id) VALUES ($1, gen_random_uuid(), now(), $2)",
@@ -544,6 +564,45 @@ describe("tenant isolation", () => {
     );
   });
 
+  it("tariff: versions are immutable, a tariff only renames or archives, parties match the kind", async () => {
+    await expectPgError(
+      run({ organizationId: orgA }, (c) => c.query("UPDATE tariff_version SET lines = '[1]'")),
+      "42501",
+    );
+    await expectPgError(
+      run({ organizationId: orgA }, (c) => c.query("DELETE FROM tariff_version")),
+      "42501",
+    );
+    await expectPgError(
+      run({ organizationId: orgA }, (c) => c.query("UPDATE tariff SET kind = 'buy'")),
+      "42501",
+    );
+    await run({ organizationId: orgA }, (c) => c.query("UPDATE tariff SET name = 'Renamed'"));
+    // A buy tariff cannot name a customer; a second version needs a new version number and date.
+    await expectPgError(
+      run({ organizationId: orgA, userId: userA }, async (c) => {
+        const customerId = (await c.query<{ id: string }>("SELECT id FROM customer LIMIT 1"))
+          .rows[0]?.id;
+        await c.query(
+          "INSERT INTO tariff (organization_id, name, kind, customer_id, created_by_user_id) VALUES ($1, 'Bad', 'buy', $2, $3)",
+          [orgA, customerId, userA],
+        );
+      }),
+      "23514",
+    );
+    await expectPgError(
+      run({ organizationId: orgA, userId: userA }, async (c) => {
+        const tariffId = (await c.query<{ id: string }>("SELECT id FROM tariff LIMIT 1")).rows[0]
+          ?.id;
+        await c.query(
+          "INSERT INTO tariff_version (organization_id, tariff_id, version, valid_from, lines, created_by_user_id) VALUES ($1, $2, 1, current_date + 5, '[]', $3)",
+          [orgA, tariffId, userA],
+        );
+      }),
+      "23505",
+    );
+  });
+
   it("position_event: cannot be updated, other organizations cannot delete, bad coordinates fail", async () => {
     await expectPgError(
       run({ organizationId: orgA }, (c) => c.query("UPDATE position_event SET latitude = 0")),
@@ -597,6 +656,8 @@ describe("tenant isolation", () => {
       "spot_tender",
       "spot_invitation",
       "spot_bid",
+      "tariff",
+      "tariff_version",
     ]) {
       expect(await count({}, `FROM ${table}`), table).toBe(0);
     }

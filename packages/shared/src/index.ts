@@ -21,6 +21,19 @@ export {
   type TransportStatus,
 } from "./transport-status.ts";
 export {
+  TARIFF_UNITS,
+  TARIFF_UNIT_LABELS,
+  applyTariff,
+  isCostKind,
+  isTariffUnit,
+  versionInForce,
+  type AppliedLine,
+  type ApplyResult,
+  type Quantities,
+  type TariffLine,
+  type TariffUnit,
+} from "./tariff.ts";
+export {
   QUOTE_STATUSES,
   QUOTE_STATUS_LABELS,
   QUOTE_TRANSITIONS,

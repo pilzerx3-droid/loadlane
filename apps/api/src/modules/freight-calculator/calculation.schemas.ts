@@ -47,6 +47,13 @@ export const createCalculationSchema = z.strictObject({
   customerId: z.uuid().nullable().optional(),
   lines: z.array(costLineInputSchema).min(1).max(50),
   pricing: pricingInputSchema,
+  tariffVersionIds: z
+    .array(z.uuid())
+    .max(10)
+    .optional()
+    .describe(
+      "Tariff versions the cost lines came from (see POST /v1/tariffs/:id/apply). Recorded in the snapshot.",
+    ),
 });
 
 export const calculationListQuerySchema = z.object({
@@ -90,6 +97,17 @@ export const calculationDetailSchema = calculationSummarySchema.extend({
     }),
   ),
   costByKind: z.record(kind, z.number().int()),
+  tariffVersions: z
+    .array(
+      z.object({
+        tariffId: z.uuid(),
+        tariffName: z.string(),
+        versionId: z.uuid(),
+        version: z.number().int(),
+        validFrom: z.string(),
+      }),
+    )
+    .describe("The exact tariff versions this calculation was built from, frozen with it"),
   pricing: z.record(z.string(), z.union([z.string(), z.number()])),
 });
 

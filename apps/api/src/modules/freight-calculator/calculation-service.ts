@@ -77,6 +77,7 @@ function summaryOf(row: Row): CalculationSummary {
 }
 
 interface StoredResult {
+  tariffVersions?: CalculationDetail["tariffVersions"];
   lines: CostLine[];
   costByKind: CalculationDetail["costByKind"];
   pricing: PricingMethod;
@@ -100,6 +101,7 @@ function detailOf(row: Row): CalculationDetail {
         : null,
     })),
     costByKind: result.costByKind,
+    tariffVersions: result.tariffVersions ?? [],
     pricing: Object.fromEntries(
       Object.entries(result.pricing).map(([key, value]) => [
         key === "rate" ? "rateBp" : key === "amount" ? "amountCents" : key,
@@ -147,6 +149,7 @@ export class CalculationService {
             ]);
           }
         }
+        const tariffVersions = await this.tariffVersions(client, input.tariffVersionIds ?? []);
         const inserted = await client.query<Row>(
           `INSERT INTO calculation (organization_id, customer_id, name, engine_version, pricing_mode, input, result,
              cost_cents, price_cents, contribution_cents, markup_bp, margin_bp, created_by_user_id)
@@ -158,7 +161,7 @@ export class CalculationService {
             ENGINE_VERSION,
             input.pricing.mode,
             JSON.stringify(input),
-            JSON.stringify(result),
+            JSON.stringify({ ...result, tariffVersions }),
             analysis.cost,
             analysis.price,
             analysis.contribution,
@@ -187,6 +190,37 @@ export class CalculationService {
         return detailOf(row.rows[0] ?? {});
       },
     );
+  }
+
+  /** The tariff versions a calculation names must exist in this organization; they are frozen into it. */
+  private async tariffVersions(
+    client: pg.PoolClient,
+    ids: readonly string[],
+  ): Promise<CalculationDetail["tariffVersions"]> {
+    if (ids.length === 0) return [];
+    const unique = [...new Set(ids)];
+    const rows = await client.query<Row>(
+      `SELECT v.id, v.version, v.valid_from::text AS valid_from, t.id AS tariff_id, t.name
+       FROM tariff_version v JOIN tariff t ON t.id = v.tariff_id AND t.organization_id = v.organization_id
+       WHERE v.id = ANY($1::uuid[]) ORDER BY t.name, v.version`,
+      [unique],
+    );
+    if (rows.rowCount !== unique.length) {
+      throw new ValidationFailedError([
+        {
+          path: "tariffVersionIds",
+          message: "a tariff version was not found",
+          code: "invalid_reference",
+        },
+      ]);
+    }
+    return rows.rows.map((row) => ({
+      tariffId: row["tariff_id"] as string,
+      tariffName: row["name"] as string,
+      versionId: row["id"] as string,
+      version: Number(row["version"]),
+      validFrom: row["valid_from"] as string,
+    }));
   }
 
   async list(context: CalculationContext, limit: number, offset: number): Promise<CalculationList> {
