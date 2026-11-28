@@ -61,7 +61,7 @@ Documents (S3 bucket) are backed up separately: enable versioning or replication
 - [ ] Retention period for positions confirmed, documents and audit retention decided.
 - [ ] `DATABASE_URL` (owner) is not available to the running processes.
 - [ ] HTTPS everywhere; HSTS is already sent by the API and the web app.
-- [ ] Content Security Policy for the web app (needs nonces for Next.js inline scripts: not done yet).
+- [x] Content Security Policy for the web app: scripts need a per-response nonce (src/proxy.ts), checked in a production build in a real browser on 2026-11-28; styles still allow inline because Tailwind and Next emit style attributes.
 - [ ] Rate limit store shared between API instances (today per instance, in memory).
 - [ ] Spending alerts at every hosted provider (ADR 0018).
 - [ ] Backup rehearsal done and written down with the date.
