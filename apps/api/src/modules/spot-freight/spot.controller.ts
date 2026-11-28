@@ -24,6 +24,7 @@ import {
   createTenderSchema,
   createdTenderSchema,
   inviteSchema,
+  invitationMailSchema,
   invitedSchema,
   manualBidSchema,
   tenderDetailSchema,
@@ -37,6 +38,12 @@ import {
 import type { SpotCarrierService } from "./spot-carrier-service.ts";
 import type { SpotService } from "./spot-service.ts";
 import { SPOT_CARRIER_SERVICE, SPOT_SERVICE } from "./tokens.ts";
+import {
+  MAIL_SERVICE,
+  spotInvitationMail,
+  usDate,
+  type MailService,
+} from "../notifications/index.ts";
 
 function contextOf(request: TenantRequest & { id?: unknown }) {
   const { auth, tenant } = requireTenant(request);
@@ -49,7 +56,51 @@ function contextOf(request: TenantRequest & { id?: unknown }) {
 
 @Controller("v1/spot-tenders")
 export class SpotController {
-  constructor(@Inject(SPOT_SERVICE) private readonly service: SpotService) {}
+  constructor(
+    @Inject(SPOT_SERVICE) private readonly service: SpotService,
+    @Inject(MAIL_SERVICE) private readonly mail: MailService,
+  ) {}
+
+  /** E-mails each carrier its link. A carrier without a contact address is skipped, never guessed. */
+  private async mailInvitations(
+    context: ReturnType<typeof contextOf>,
+    tender: TenderDetail,
+    links: { carrierId: string; token: string }[],
+  ): Promise<z.output<typeof invitationMailSchema>[]> {
+    const contacts = await this.service.carrierContacts(
+      context,
+      links.map((link) => link.carrierId),
+    );
+    const senderName = await this.mail.senderName(context);
+    const results: z.output<typeof invitationMailSchema>[] = [];
+    for (const link of links) {
+      const contact = contacts.get(link.carrierId);
+      if (!contact?.email) {
+        results.push({
+          carrierId: link.carrierId,
+          status: "skipped",
+          errorCode: "no_contact_email",
+        });
+        continue;
+      }
+      const content = spotInvitationMail({
+        senderName,
+        carrierName: contact.name,
+        reference: tender.transport.reference,
+        origin: tender.origin,
+        destination: tender.destination,
+        deadline: usDate(tender.responseDeadline),
+        link: `${this.mail.appUrl}/s/${link.token}`,
+      });
+      const outcome = await this.mail.send(context, {
+        kind: "spot_invitation",
+        relatedId: tender.id,
+        message: { to: contact.email, ...content },
+      });
+      results.push({ carrierId: link.carrierId, ...outcome });
+    }
+    return results;
+  }
 
   @Get()
   @RequirePermissions("spot:read")
@@ -75,11 +126,15 @@ export class SpotController {
     response: createdTenderSchema,
     status: 201,
   })
-  create(
+  async create(
     @Req() request: TenantRequest,
     @Body(new ZodPipe(createTenderSchema)) body: z.output<typeof createTenderSchema>,
   ): Promise<CreatedTender> {
-    return this.service.create(contextOf(request), body);
+    const context = contextOf(request);
+    if (body.sendEmail) this.mail.assertConfigured();
+    const created = await this.service.create(context, body);
+    if (!body.sendEmail) return created;
+    return { ...created, mail: await this.mailInvitations(context, created, created.links) };
   }
 
   @Get(":id")
@@ -104,12 +159,20 @@ export class SpotController {
     response: invitedSchema,
     status: 201,
   })
-  invite(
+  async invite(
     @Req() request: TenantRequest,
     @Param("id", new ZodPipe(idParamSchema)) id: string,
     @Body(new ZodPipe(inviteSchema)) body: z.output<typeof inviteSchema>,
   ) {
-    return this.service.invite(contextOf(request), id, body.carrierId, body.inviteDays);
+    const context = contextOf(request);
+    if (body.sendEmail) this.mail.assertConfigured();
+    const invited = await this.service.invite(context, id, body.carrierId, body.inviteDays);
+    if (!body.sendEmail) return invited;
+    const tender = await this.service.get(context, id);
+    const [mail] = await this.mailInvitations(context, tender, [
+      { carrierId: invited.carrierId, token: invited.token },
+    ]);
+    return mail ? { ...invited, mail } : invited;
   }
 
   @Post(":id/bids")

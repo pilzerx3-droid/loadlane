@@ -20,7 +20,28 @@ describe("loadApiConfig", () => {
       openApiEnabled: true,
       maxOrganizationsPerUser: 3,
       tracesExporter: "none",
+      appUrl: "http://localhost:3000",
     });
+  });
+
+  it("reads the mail settings and needs a sender with a server", () => {
+    const config = loadApiConfig({
+      ...valid,
+      APP_URL: "https://app.example.com/",
+      MAIL_SMTP_URL: "smtp://127.0.0.1:1025",
+      MAIL_FROM: "Loadlane <no-reply@example.com>",
+    });
+    expect(config.appUrl).toBe("https://app.example.com");
+    expect(config.mail).toEqual({
+      smtpUrl: "smtp://127.0.0.1:1025",
+      from: "Loadlane <no-reply@example.com>",
+    });
+    expect(() => loadApiConfig({ ...valid, MAIL_SMTP_URL: "smtp://127.0.0.1:1025" })).toThrow(
+      /MAIL_FROM/,
+    );
+    expect(() =>
+      loadApiConfig({ ...valid, MAIL_SMTP_URL: "http://x", MAIL_FROM: "a@b.co" }),
+    ).toThrow(/MAIL_SMTP_URL/);
   });
 
   it("reads the trace exporter and rejects an unknown one", () => {

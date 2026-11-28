@@ -1,5 +1,6 @@
 import {
   Body,
+  ConflictException,
   Controller,
   Get,
   HttpCode,
@@ -18,7 +19,7 @@ import { RequirePermissions } from "../../platform/access.ts";
 import { idParamSchema } from "../../platform/directory-http.ts";
 import { ApiRoute } from "../../platform/openapi.ts";
 import { requireTenant, type TenantRequest } from "../../platform/request-context.ts";
-import { ZodPipe } from "../../platform/validation.ts";
+import { ValidationFailedError, ZodPipe } from "../../platform/validation.ts";
 import {
   createQuoteSchema,
   quoteDetailSchema,
@@ -32,6 +33,14 @@ import {
 import { renderQuotePdf } from "./quote-pdf.ts";
 import type { QuoteService } from "./quote-service.ts";
 import { QUOTE_SERVICE } from "./tokens.ts";
+import { MAIL_SERVICE, quoteMail, usDate, type MailService } from "../notifications/index.ts";
+
+const emailQuoteSchema = z.strictObject({ to: z.email().max(254).optional() });
+const emailQuoteResultSchema = z.object({
+  to: z.string(),
+  status: z.enum(["sent", "failed"]),
+  errorCode: z.string().nullable(),
+});
 
 function contextOf(request: TenantRequest & { id?: unknown }) {
   const { auth, tenant } = requireTenant(request);
@@ -44,7 +53,69 @@ function contextOf(request: TenantRequest & { id?: unknown }) {
 
 @Controller("v1/quotes")
 export class QuoteController {
-  constructor(@Inject(QUOTE_SERVICE) private readonly service: QuoteService) {}
+  constructor(
+    @Inject(QUOTE_SERVICE) private readonly service: QuoteService,
+    @Inject(MAIL_SERVICE) private readonly mail: MailService,
+  ) {}
+
+  @Post(":id/email")
+  @HttpCode(200)
+  @RequirePermissions("quote:manage")
+  @ApiRoute({
+    summary:
+      "E-mail a sent quote as a PDF. Goes to `to`, or to the customer's contact address when `to` is left out.",
+    body: emailQuoteSchema,
+    response: emailQuoteResultSchema,
+  })
+  async email(
+    @Req() request: TenantRequest,
+    @Param("id", new ZodPipe(idParamSchema)) id: string,
+    @Body(new ZodPipe(emailQuoteSchema)) body: z.output<typeof emailQuoteSchema>,
+  ): Promise<z.output<typeof emailQuoteResultSchema>> {
+    const context = contextOf(request);
+    this.mail.assertConfigured();
+    const data = await this.service.pdfData(context, id);
+    if (data.status !== "sent") {
+      throw new ConflictException({
+        statusCode: 409,
+        code: "quote_not_sendable",
+        message: "Only a quote that was marked as sent can be e-mailed. Mark it as sent first.",
+      });
+    }
+    const to = body.to ?? data.customerEmail;
+    if (!to) {
+      throw new ValidationFailedError([
+        {
+          path: "to",
+          message: "the customer has no contact e-mail; enter an address",
+          code: "required",
+        },
+      ]);
+    }
+    const bytes = await renderQuotePdf(data);
+    const content = quoteMail({
+      senderName: data.issuer,
+      customerName: data.customerName,
+      reference: data.reference,
+      validUntil: usDate(data.validUntil),
+    });
+    const outcome = await this.mail.send(context, {
+      kind: "quote",
+      relatedId: id,
+      message: {
+        to,
+        ...content,
+        attachments: [
+          {
+            filename: `${data.reference}.pdf`,
+            content: Buffer.from(bytes),
+            contentType: "application/pdf",
+          },
+        ],
+      },
+    });
+    return { to, ...outcome };
+  }
 
   @Get()
   @RequirePermissions("quote:read")

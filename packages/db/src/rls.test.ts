@@ -43,6 +43,7 @@ const TENANT_TABLES = [
   "tariff_version",
   "api_key",
   "external_ref",
+  "mail_log",
 ] as const;
 
 /** Tables in schema public that deliberately have no row-level security. */
@@ -154,6 +155,10 @@ async function seedOrganization(
     await c.query(
       "INSERT INTO external_ref (organization_id, api_key_id, entity_type, external_id, internal_id, request_hash) VALUES ($1, $2, 'transport', 'SAP-1', $3, 'h')",
       [organizationId, keyRow.rows[0]?.id, transportRow.rows[0]?.id],
+    );
+    await c.query(
+      "INSERT INTO mail_log (organization_id, kind, recipient, status, sent_by_user_id) VALUES ($1, 'tracking_link', 'customer@example.com', 'sent', $2)",
+      [organizationId, adminUserId],
     );
     const tariffRow = await c.query<{ id: string }>(
       "INSERT INTO tariff (organization_id, name, kind, customer_id, created_by_user_id) VALUES ($1, 'Acme sell', 'sell', $2, $3) RETURNING id",
@@ -320,6 +325,11 @@ describe("tenant isolation", () => {
         "external_ref",
         "INSERT INTO external_ref (organization_id, api_key_id, entity_type, external_id, internal_id, request_hash) VALUES ($1, gen_random_uuid(), 'transport', 'X', gen_random_uuid(), 'h')",
         [orgB],
+      ],
+      [
+        "mail_log",
+        "INSERT INTO mail_log (organization_id, kind, recipient, status, sent_by_user_id) VALUES ($1, 'quote', 'forged@example.com', 'sent', $2)",
+        [orgB, userA],
       ],
       [
         "tariff",
@@ -675,6 +685,26 @@ describe("tenant isolation", () => {
     );
   });
 
+  it("mail_log: append only, and an invalid status or address fails", async () => {
+    await expectPgError(
+      run({ organizationId: orgA }, (c) => c.query("UPDATE mail_log SET status = 'failed'")),
+      "42501",
+    );
+    await expectPgError(
+      run({ organizationId: orgA }, (c) => c.query("DELETE FROM mail_log")),
+      "42501",
+    );
+    await expectPgError(
+      run({ organizationId: orgA, userId: userA }, (c) =>
+        c.query(
+          "INSERT INTO mail_log (organization_id, kind, recipient, status, sent_by_user_id) VALUES ($1, 'quote', 'a@b.co', 'queued', $2)",
+          [orgA, userA],
+        ),
+      ),
+      "23514",
+    );
+  });
+
   it("position_event: cannot be updated, other organizations cannot delete, bad coordinates fail", async () => {
     await expectPgError(
       run({ organizationId: orgA }, (c) => c.query("UPDATE position_event SET latitude = 0")),
@@ -732,6 +762,7 @@ describe("tenant isolation", () => {
       "tariff_version",
       "api_key",
       "external_ref",
+      "mail_log",
     ]) {
       expect(await count({}, `FROM ${table}`), table).toBe(0);
     }

@@ -14,6 +14,13 @@ import {
   type TrackingService,
 } from "./tracking-service.ts";
 import { TRACKING_SERVICE } from "./tokens.ts";
+import {
+  MAIL_SERVICE,
+  trackingLinkMail,
+  usDate,
+  type MailOutcome,
+  type MailService,
+} from "../notifications/index.ts";
 
 const summarySchema = z.object({
   id: z.uuid(),
@@ -24,10 +31,21 @@ const summarySchema = z.object({
   revokedAt: z.iso.datetime().nullable(),
   createdBy: z.object({ id: z.uuid(), displayName: z.string() }),
 });
-const createdSchema = summarySchema.extend({ token: z.string() });
+const mailOutcomeSchema = z.object({
+  status: z.enum(["sent", "failed"]),
+  errorCode: z.string().nullable(),
+});
+const createdSchema = summarySchema.extend({
+  token: z.string(),
+  reference: z.string(),
+  /** Present only when `emailTo` was given: whether the mail went out. */
+  mail: mailOutcomeSchema.optional(),
+});
 const listSchema = z.object({ items: z.array(summarySchema) });
 const createBodySchema = z.object({
   expiresInDays: z.number().int().min(1).max(MAX_TRACKING_DAYS).optional(),
+  /** Send the link to this address. The link is created either way; the response says whether the mail went out. */
+  emailTo: z.email().max(254).optional(),
 });
 const viewSchema = z.object({
   reference: z.string(),
@@ -59,7 +77,10 @@ function contextOf(request: TenantRequest & { id?: unknown }) {
 
 @Controller("v1")
 export class TrackingController {
-  constructor(@Inject(TRACKING_SERVICE) private readonly service: TrackingService) {}
+  constructor(
+    @Inject(TRACKING_SERVICE) private readonly service: TrackingService,
+    @Inject(MAIL_SERVICE) private readonly mail: MailService,
+  ) {}
 
   @Get("transports/:id/tracking-links")
   @RequirePermissions("transport:read")
@@ -83,12 +104,27 @@ export class TrackingController {
     response: createdSchema,
     status: 201,
   })
-  create(
+  async create(
     @Req() request: TenantRequest,
     @Param("id", new ZodPipe(idParamSchema)) id: string,
     @Body(new ZodPipe(createBodySchema)) body: z.infer<typeof createBodySchema>,
-  ): Promise<CreatedTrackingLink> {
-    return this.service.create(contextOf(request), id, body.expiresInDays);
+  ): Promise<CreatedTrackingLink & { mail?: MailOutcome }> {
+    const context = contextOf(request);
+    if (body.emailTo) this.mail.assertConfigured(); // fail before a link exists that nobody can receive
+    const link = await this.service.create(context, id, body.expiresInDays);
+    if (!body.emailTo) return link;
+    const content = trackingLinkMail({
+      senderName: await this.mail.senderName(context),
+      reference: link.reference,
+      link: `${this.mail.appUrl}/t/${link.token}`,
+      expiresOn: usDate(link.expiresAt),
+    });
+    const mail = await this.mail.send(context, {
+      kind: "tracking_link",
+      relatedId: link.transportId,
+      message: { to: body.emailTo, ...content },
+    });
+    return { ...link, mail };
   }
 
   @Post("tracking-links/:id/revoke")

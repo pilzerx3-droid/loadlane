@@ -3,6 +3,7 @@ import { createAppPool } from "@loadlane/db";
 import { Redis } from "ioredis";
 import { createApp } from "./create-app.ts";
 import { RedisThrottlerStorage } from "./platform/redis-throttler-storage.ts";
+import { SmtpMailProvider } from "./platform/mail.ts";
 import { S3ObjectStorage } from "./platform/object-storage.ts";
 import { startTelemetry } from "./platform/telemetry.ts";
 import { loadApiConfig, loadEnvFileIfPresent } from "./config/env.ts";
@@ -21,6 +22,9 @@ if (storage) {
     );
   });
 }
+const mail = config.mail
+  ? new SmtpMailProvider({ url: config.mail.smtpUrl, from: config.mail.from })
+  : undefined;
 // A rate limit shared by all instances needs a store they all reach; without one each instance counts alone.
 const limiterRedis = config.rateLimitRedisUrl
   ? new Redis(config.rateLimitRedisUrl, { maxRetriesPerRequest: 1, enableOfflineQueue: false })
@@ -36,6 +40,7 @@ const app = await createApp({
   openApiEnabled: config.openApiEnabled,
   log: { level: config.logLevel },
   ...(storage ? { storage } : {}),
+  ...(mail ? { mail } : {}),
   ...(rateLimitStorage ? { rateLimitStorage } : {}),
 });
 

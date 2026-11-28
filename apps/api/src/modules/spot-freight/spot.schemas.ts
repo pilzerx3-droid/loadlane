@@ -29,11 +29,16 @@ export const createTenderSchema = z.strictObject({
     .max(30)
     .optional()
     .describe("How long the carrier links stay valid"),
+  sendEmail: z
+    .boolean()
+    .optional()
+    .describe("E-mail each carrier its link, to the contact address stored on the carrier"),
 });
 
 export const inviteSchema = z.strictObject({
   carrierId: z.uuid(),
   inviteDays: z.number().int().min(1).max(30).optional(),
+  sendEmail: z.boolean().optional(),
 });
 
 export const manualBidSchema = z.strictObject({
@@ -111,8 +116,16 @@ export const tenderDetailSchema = tenderSummarySchema.extend({
   ),
 });
 
+export const invitationMailSchema = z.object({
+  carrierId: z.uuid(),
+  status: z.enum(["sent", "failed", "skipped"]),
+  /** mail_send_failed, or no_contact_email when the carrier has no address stored. */
+  errorCode: z.string().nullable(),
+});
+
 export const createdTenderSchema = tenderDetailSchema.extend({
   links: z.array(z.object({ carrierId: z.uuid(), token: z.string() })).describe("Shown once"),
+  mail: z.array(invitationMailSchema).optional().describe("Present only when sendEmail was set"),
 });
 
 export const invitedSchema = z.object({
@@ -120,6 +133,7 @@ export const invitedSchema = z.object({
   carrierId: z.uuid(),
   token: z.string(),
   expiresAt: z.iso.datetime(),
+  mail: invitationMailSchema.optional(),
 });
 
 export const tenderListSchema = z.object({

@@ -158,6 +158,25 @@ export class SpotService {
     });
   }
 
+  /** Name and contact address of carriers, to e-mail their invitation links. */
+  async carrierContacts(
+    context: SpotContext,
+    carrierIds: string[],
+  ): Promise<Map<string, { name: string; email: string | null }>> {
+    return withTenant(this.pool, this.tenant(context), async ({ client }) => {
+      const rows = await client.query<Row>(
+        "SELECT id, name, contact_email FROM carrier WHERE id = ANY($1::uuid[])",
+        [carrierIds],
+      );
+      return new Map(
+        rows.rows.map((row) => [
+          row["id"] as string,
+          { name: row["name"] as string, email: row["contact_email"] as string | null },
+        ]),
+      );
+    });
+  }
+
   async list(context: SpotContext, query: TenderListQuery): Promise<TenderList> {
     return withTenant(this.pool, this.tenant(context), async ({ client }) => {
       const params: unknown[] = [];

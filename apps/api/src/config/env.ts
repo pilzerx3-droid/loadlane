@@ -22,6 +22,10 @@ export interface ApiConfig {
   maxOrganizationsPerUser: number;
   /** Where request traces go: nowhere (default), the console, or an OTLP/HTTP collector. */
   tracesExporter: "none" | "console" | "otlp";
+  /** Public address of the web app, used to build links in e-mails. Never has a trailing slash. */
+  appUrl: string;
+  /** SMTP server for outgoing e-mail (ADR 0021). Left out when MAIL_SMTP_URL is not set; sending then answers 503. */
+  mail?: { smtpUrl: string; from: string };
   /** S3-compatible file storage. Left out when S3_ENDPOINT is not set; document uploads then answer 503. */
   s3?: {
     endpoint: string;
@@ -34,7 +38,7 @@ export interface ApiConfig {
 
 /** What the modules need at run time. Tests pass only the parts they use. */
 export type RuntimeConfig = Pick<ApiConfig, "oidcIssuer" | "oidcAudience"> &
-  Partial<Pick<ApiConfig, "maxOrganizationsPerUser">>;
+  Partial<Pick<ApiConfig, "maxOrganizationsPerUser" | "appUrl">>;
 
 const LOCAL_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]"]);
 
@@ -56,6 +60,15 @@ const envSchema = z.object({
   RATE_LIMIT_REDIS_URL: z.string().min(1).optional(),
   OPENAPI_ENABLED: z.enum(["true", "false"]).optional(),
   MAX_ORGANIZATIONS_PER_USER: z.coerce.number().int().min(1).max(1000).default(3),
+  APP_URL: z.url().default("http://localhost:3000"),
+  MAIL_SMTP_URL: z
+    .string()
+    .refine(
+      (value) => /^smtps?:\/\//.test(value) && URL.canParse(value),
+      "must be an smtp:// or smtps:// URL",
+    )
+    .optional(),
+  MAIL_FROM: z.string().min(3).optional(),
   S3_ENDPOINT: z.url().optional(),
   S3_REGION: z.string().min(1).default("us-east-1"),
   S3_ACCESS_KEY_ID: z.string().min(1).optional(),
@@ -89,8 +102,21 @@ export function loadApiConfig(env: Record<string, string | undefined>): ApiConfi
     maxOrganizationsPerUser: values.MAX_ORGANIZATIONS_PER_USER,
     tracesExporter: values.OTEL_TRACES_EXPORTER,
     ...(values.RATE_LIMIT_REDIS_URL ? { rateLimitRedisUrl: values.RATE_LIMIT_REDIS_URL } : {}),
+    appUrl: values.APP_URL.replace(/\/+$/, ""),
+    ...mailSettings(values),
     ...s3Settings(values),
   };
+}
+
+/** Mail settings are all or nothing: a server without a sender address is a mistake worth stopping for. */
+function mailSettings(values: z.infer<typeof envSchema>): Pick<ApiConfig, "mail"> {
+  if (values.MAIL_SMTP_URL === undefined) return {};
+  if (values.MAIL_FROM === undefined) {
+    throw new Error(
+      "Invalid API configuration (see .env.example):\n  MAIL_FROM is required when MAIL_SMTP_URL is set",
+    );
+  }
+  return { mail: { smtpUrl: values.MAIL_SMTP_URL, from: values.MAIL_FROM } };
 }
 
 /** Loads the repository's .env (searching upwards from the working directory). Never overrides real environment variables. */

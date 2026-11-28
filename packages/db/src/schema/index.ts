@@ -14,3 +14,4 @@ export * from "./quote.ts";
 export * from "./spot.ts";
 export * from "./tariff.ts";
 export * from "./integration.ts";
+export * from "./mail-log.ts";

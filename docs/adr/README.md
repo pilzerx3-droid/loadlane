@@ -22,3 +22,4 @@
 | [0018](0018-hosting-test-environment.md)  | Hosted test environment                          | Proposed |
 | [0019](0019-spot-freight-model.md)        | Spot freight model                               | Accepted |
 | [0020](0020-partner-api-keys.md)          | Partner API keys and idempotent inbound calls    | Accepted |
+| [0021](0021-map-routing-mail-providers.md) | Map, routing, geocoding and mail providers      | Accepted |

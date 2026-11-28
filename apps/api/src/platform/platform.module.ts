@@ -7,8 +7,9 @@ import { HealthController } from "./health.ts";
 import { loggerModule, type LogOptions } from "./logging.ts";
 import { OpenApiController, OpenApiService } from "./openapi.ts";
 import { ProblemFilter } from "./problem.ts";
+import type { MailProvider } from "./mail.ts";
 import type { ObjectStorage } from "./object-storage.ts";
-import { API_CONFIG, APP_POOL, OBJECT_STORAGE } from "./tokens.ts";
+import { API_CONFIG, APP_POOL, MAIL_PROVIDER, OBJECT_STORAGE } from "./tokens.ts";
 
 export interface PlatformOptions {
   config: RuntimeConfig;
@@ -17,6 +18,7 @@ export interface PlatformOptions {
   openApiEnabled: boolean;
   log: LogOptions;
   storage: ObjectStorage;
+  mail: MailProvider;
 }
 
 /**
@@ -37,6 +39,7 @@ export class PlatformModule {
         { provide: APP_POOL, useValue: options.pool },
         { provide: API_CONFIG, useValue: options.config },
         { provide: OBJECT_STORAGE, useValue: options.storage },
+        { provide: MAIL_PROVIDER, useValue: options.mail },
         { provide: APP_FILTER, useClass: ProblemFilter },
         AccessDeclarationCheck,
         ...(options.openApiEnabled ? [OpenApiService] : []),
@@ -45,6 +48,7 @@ export class PlatformModule {
         APP_POOL,
         API_CONFIG,
         OBJECT_STORAGE,
+        MAIL_PROVIDER,
         ...(options.openApiEnabled ? [OpenApiService] : []),
       ],
     };

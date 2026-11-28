@@ -27,6 +27,8 @@ export interface TrackingLinkSummary {
 
 export interface CreatedTrackingLink extends TrackingLinkSummary {
   token: string;
+  /** The transport's reference (LL-000001), for the e-mail that carries the link. */
+  reference: string;
 }
 
 /** What the customer's page may show. Nothing else leaves the API through a tracking link. */
@@ -90,9 +92,10 @@ export class TrackingService {
     }
     const token = newCapabilityToken();
     return withTenant(this.pool, this.tenant(context), async ({ client }) => {
-      const transport = await client.query<Row>("SELECT status FROM transport WHERE id = $1", [
-        transportId,
-      ]);
+      const transport = await client.query<Row>(
+        "SELECT status, number FROM transport WHERE id = $1",
+        [transportId],
+      );
       const status = transport.rows[0]?.["status"] as string | undefined;
       if (!status) throw new NotFoundException();
       if (status === "cancelled") {
@@ -114,7 +117,8 @@ export class TrackingService {
         transportId,
         expiresAt: summary.expiresAt,
       });
-      return { ...summary, token };
+      const number = Number(transport.rows[0]?.["number"]);
+      return { ...summary, token, reference: `LL-${String(number).padStart(6, "0")}` };
     });
   }
 

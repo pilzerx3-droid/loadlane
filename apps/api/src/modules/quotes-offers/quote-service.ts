@@ -208,11 +208,14 @@ export class QuoteService {
   }
 
   /** Only what the customer may see, for the PDF. Cost and margin never leave the calculation. */
-  async pdfData(context: QuoteContext, id: string): Promise<QuotePdfData> {
+  async pdfData(
+    context: QuoteContext,
+    id: string,
+  ): Promise<QuotePdfData & { customerEmail: string | null }> {
     return withTenant(this.pool, this.tenant(context), async ({ client }) => {
       const rows = await client.query<Row>(
         `SELECT q.number, q.status, q.price_cents, q.valid_until::text AS valid_until, q.terms,
-                cu.name AS customer_name, ca.name AS calculation_name, o.name AS issuer
+                cu.name AS customer_name, cu.contact_email AS customer_email, ca.name AS calculation_name, o.name AS issuer
          FROM quote q
          JOIN customer cu ON cu.id = q.customer_id AND cu.organization_id = q.organization_id
          JOIN calculation ca ON ca.id = q.calculation_id AND ca.organization_id = q.organization_id
@@ -227,6 +230,7 @@ export class QuoteService {
         issuer: row["issuer"] as string,
         reference: quoteReference(Number(row["number"])),
         customerName: row["customer_name"] as string,
+        customerEmail: row["customer_email"] as string | null,
         calculationName: row["calculation_name"] as string,
         priceCents: Number(row["price_cents"]),
         validUntil: row["valid_until"] as string,
