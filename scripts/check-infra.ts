@@ -88,10 +88,23 @@ async function checkS3(): Promise<CheckResult> {
   }
 }
 
+async function checkMailpit(): Promise<CheckResult> {
+  const url = `http://127.0.0.1:${env("MAILPIT_UI_PORT", "8025")}/livez`;
+  try {
+    const response = await fetch(url, { signal: AbortSignal.timeout(TIMEOUT_MS) });
+    return response.ok
+      ? { ok: true, detail: `${url}, mail catcher answered` }
+      : { ok: false, detail: `${url} answered HTTP ${response.status}` };
+  } catch (error) {
+    return { ok: false, detail: `${url} not reachable (${message(error)})` };
+  }
+}
+
 const checks: [string, () => Promise<CheckResult>][] = [
   ["PostgreSQL", checkPostgres],
   ["Valkey", checkValkey],
   ["SeaweedFS S3", checkS3],
+  ["Mailpit", checkMailpit],
 ];
 
 let failed = 0;

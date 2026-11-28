@@ -41,12 +41,24 @@ jobs:
           --health-interval 5s
           --health-timeout 5s
           --health-retries 20
+      mailpit:
+        image: axllent/mailpit:v1.31
+        ports:
+          - 1025:1025
+          - 8025:8025
+        options: >-
+          --health-cmd "wget -q -O /dev/null http://127.0.0.1:8025/livez"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
 
     # Local-only throwaway values for the service containers above; no real secrets.
     env:
       DATABASE_URL: postgres://loadlane:loadlane_dev_only@127.0.0.1:5432/loadlane
       APP_DATABASE_URL: postgres://loadlane_app:loadlane_app_dev_only@127.0.0.1:5432/loadlane
       REDIS_URL: redis://127.0.0.1:6379
+      MAIL_SMTP_URL: smtp://127.0.0.1:1025
+      MAILPIT_UI_PORT: "8025"
       NEXT_TELEMETRY_DISABLED: "1"
 
     steps:

@@ -20,6 +20,10 @@ Images (the API image was built and run on 2026-11-28: it started as the unprivi
 - `OIDC_ISSUER`, `OIDC_AUDIENCE`, and the web app's OIDC client settings (see `docs/dev-setup-zitadel.md`).
 - `S3_ENDPOINT`, `S3_BUCKET` and its keys: documents (the API answers 503 `storage_not_configured` without them).
 - Valkey/Redis URL for web sessions.
+- `APP_URL` (the public address of the web app, used in e-mailed links), `MAIL_SMTP_URL` and `MAIL_FROM`: e-mail through any SMTP server (ADR 0021). Without them sending answers 503 `mail_not_configured` and nothing is created. Check the sender domain (SPF, DKIM) with your mail provider before mailing real customers.
+- `ORS_API_KEY`: OpenRouteService key for address lookup and arrival estimates (ADR 0021). The free plan is limited (about 2,000 route requests per day and 40 per minute; check your dashboard, the published figures differ). Estimates refresh at most every 10 minutes per transport, so roughly 144 requests per day per transport on the road. Without a key both features say they are not configured.
+- `MAP_STYLE_URL` and `MAP_EXTRA_ORIGINS` (web app): the map background. The default is the public OpenFreeMap style, which has no key and no promised availability; self-host or switch the style URL if the map matters for customers. Keep the OpenStreetMap attribution.
+- The web build copies the MapLibre worker to `apps/web/public/maplibre` (a `prebuild` and `predev` step), so the Docker build does it as part of `pnpm build`.
 - Run the API behind HTTPS. Behind a proxy tell Express to trust it, otherwise the per-address rate limit sees one client (see `platform/rate-limit.ts`). Set `RATE_LIMIT_REDIS_URL` when more than one API instance runs.
 
 ## Deploy order

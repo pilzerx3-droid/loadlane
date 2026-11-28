@@ -3,6 +3,7 @@ import { withTenant } from "@loadlane/db";
 import {
   alertConditions,
   canTransition,
+  etaIsCurrent,
   nextTransportStatuses,
   STATUSES_REQUIRING_CARRIER,
   TRANSPORT_STATUSES,
@@ -200,11 +201,13 @@ export class TransportService {
         `SELECT t.id, t.number, t.status, c.name AS customer_name, ca.name AS carrier_name,
                 (SELECT window_end FROM stop WHERE transport_id = t.id AND sequence = 1) AS first_pickup_end,
                 (SELECT window_end FROM stop WHERE transport_id = t.id ORDER BY sequence DESC LIMIT 1) AS last_delivery_end,
-                p.recorded_at AS last_position_at
+                p.recorded_at AS last_position_at,
+                e.eta_at, e.computed_at AS eta_computed_at
          FROM transport t
          JOIN customer c ON c.id = t.customer_id
          LEFT JOIN carrier ca ON ca.id = t.carrier_id
          LEFT JOIN last_position p ON p.transport_id = t.id
+         LEFT JOIN eta_estimate e ON e.transport_id = t.id
          WHERE t.status NOT IN ('delivered', 'completed', 'cancelled')
          ORDER BY t.number DESC LIMIT 500`,
       );
@@ -215,8 +218,18 @@ export class TransportService {
         const firstPickupEnd = row["first_pickup_end"] as Date;
         const lastDeliveryEnd = row["last_delivery_end"] as Date;
         const position = row["last_position_at"] as Date | null;
+        // An estimate counts only while it is current: an old one describes where the truck was.
+        const etaAt = row["eta_at"] as Date | null;
+        const estimatedArrival =
+          etaAt && etaIsCurrent(row["eta_computed_at"] as Date, now) ? etaAt : null;
         const conditions = alertConditions(
-          { status, firstPickupEnd, lastDeliveryEnd, lastPositionRecordedAt: position },
+          {
+            status,
+            firstPickupEnd,
+            lastDeliveryEnd,
+            lastPositionRecordedAt: position,
+            estimatedArrival,
+          },
           now,
         );
         if (conditions.length === 0) continue;
@@ -230,6 +243,7 @@ export class TransportService {
           firstPickupEnd: firstPickupEnd.toISOString(),
           lastDeliveryEnd: lastDeliveryEnd.toISOString(),
           lastPositionAt: position ? position.toISOString() : null,
+          estimatedArrival: estimatedArrival ? estimatedArrival.toISOString() : null,
         });
       }
       return { items };

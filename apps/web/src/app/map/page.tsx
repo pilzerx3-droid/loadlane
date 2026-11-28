@@ -69,12 +69,13 @@ export default async function MapPage() {
                   <th className="px-3 py-2">Transport</th>
                   <th className="px-3 py-2">Status</th>
                   <th className="px-3 py-2">Last known position</th>
+                  <th className="px-3 py-2">Estimated arrival</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
                 {data.transports.length === 0 ? (
                   <tr>
-                    <td colSpan={3} className="px-3 py-4 text-muted-foreground">
+                    <td colSpan={4} className="px-3 py-4 text-muted-foreground">
                       No open transports.
                     </td>
                   </tr>
@@ -91,6 +92,11 @@ export default async function MapPage() {
                         {transport.lastPosition
                           ? `${describeAge(transport.lastPosition.ageMs)} · ${FRESHNESS_LABELS[transport.lastPosition.freshness]} · recorded ${new Date(transport.lastPosition.recordedAt).toLocaleString("en-US")}`
                           : "No position reported"}
+                      </td>
+                      <td className="px-3 py-2">
+                        {transport.estimatedArrival
+                          ? new Date(transport.estimatedArrival).toLocaleString("en-US")
+                          : "None"}
                       </td>
                     </tr>
                   ))

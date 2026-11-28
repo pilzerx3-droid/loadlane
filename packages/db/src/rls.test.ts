@@ -44,6 +44,7 @@ const TENANT_TABLES = [
   "api_key",
   "external_ref",
   "mail_log",
+  "eta_estimate",
 ] as const;
 
 /** Tables in schema public that deliberately have no row-level security. */
@@ -159,6 +160,10 @@ async function seedOrganization(
     await c.query(
       "INSERT INTO mail_log (organization_id, kind, recipient, status, sent_by_user_id) VALUES ($1, 'tracking_link', 'customer@example.com', 'sent', $2)",
       [organizationId, adminUserId],
+    );
+    await c.query(
+      "INSERT INTO eta_estimate (organization_id, transport_id, computed_at, based_on_recorded_at, from_latitude, from_longitude, distance_m, duration_s, eta_at, provider) VALUES ($1, $2, now(), now(), 32.7, -96.8, 386000, 14400, now() + interval '4 hours', 'openrouteservice')",
+      [organizationId, transportRow.rows[0]?.id],
     );
     const tariffRow = await c.query<{ id: string }>(
       "INSERT INTO tariff (organization_id, name, kind, customer_id, created_by_user_id) VALUES ($1, 'Acme sell', 'sell', $2, $3) RETURNING id",
@@ -330,6 +335,11 @@ describe("tenant isolation", () => {
         "mail_log",
         "INSERT INTO mail_log (organization_id, kind, recipient, status, sent_by_user_id) VALUES ($1, 'quote', 'forged@example.com', 'sent', $2)",
         [orgB, userA],
+      ],
+      [
+        "eta_estimate",
+        "INSERT INTO eta_estimate (organization_id, transport_id, computed_at, based_on_recorded_at, from_latitude, from_longitude, distance_m, duration_s, eta_at, provider) VALUES ($1, gen_random_uuid(), now(), now(), 1, 1, 1, 1, now(), 'openrouteservice')",
+        [orgB],
       ],
       [
         "tariff",
@@ -723,6 +733,25 @@ describe("tenant isolation", () => {
     );
   });
 
+  it("eta_estimate: an estimate can be replaced but not deleted, and one organization cannot touch the other's", async () => {
+    await expectPgError(
+      run({ organizationId: orgA }, (c) => c.query("DELETE FROM eta_estimate")),
+      "42501",
+    );
+    const foreign = await run({ organizationId: orgA }, (c) =>
+      c.query("UPDATE eta_estimate SET duration_s = 1 WHERE organization_id = $1", [orgB]),
+    );
+    expect(foreign.rowCount).toBe(0);
+    const own = await run({ organizationId: orgA }, (c) =>
+      c.query("UPDATE eta_estimate SET duration_s = 7200"),
+    );
+    expect(own.rowCount).toBe(1);
+    await expectPgError(
+      run({ organizationId: orgA }, (c) => c.query("UPDATE eta_estimate SET provider = 'guess'")),
+      "23514",
+    );
+  });
+
   it("mail_log: append only, and an invalid status or address fails", async () => {
     await expectPgError(
       run({ organizationId: orgA }, (c) => c.query("UPDATE mail_log SET status = 'failed'")),
@@ -801,6 +830,7 @@ describe("tenant isolation", () => {
       "api_key",
       "external_ref",
       "mail_log",
+      "eta_estimate",
     ]) {
       expect(await count({}, `FROM ${table}`), table).toBe(0);
     }

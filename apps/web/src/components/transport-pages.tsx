@@ -21,6 +21,7 @@ import { requireOrganizationPage, type ActiveViewer } from "../lib/viewer";
 import { AppShell } from "./app-shell";
 import { DocumentsCard } from "./documents-card";
 import { DriverLinksCard } from "./driver-links-card";
+import { EtaCard, etaSchema } from "./eta-card";
 import { LastPositionCard } from "./last-position-card";
 import { ForbiddenNotice, Notice } from "./notices";
 import { TrackingLinksCard } from "./tracking-links-card";
@@ -288,6 +289,7 @@ export async function TransportDetailPage({ id, problem }: { id: string; problem
     `/v1/transports/${id}/tracking-links`,
     trackingLinkListSchema,
   );
+  const eta = await call(viewer, `/v1/transports/${id}/eta`, etaSchema);
   const timeZone = transport.stops[0]?.location.timezone ?? "UTC";
   return (
     <AppShell viewer={viewer}>
@@ -321,6 +323,16 @@ export async function TransportDetailPage({ id, problem }: { id: string; problem
       <div className="mt-5">
         <LastPositionCard position={transport.lastPosition} timeZone={timeZone} now={new Date()} />
       </div>
+      {eta.ok ? (
+        <div className="mt-5">
+          <EtaCard
+            eta={eta.data}
+            windowEnd={transport.stops.at(-1)?.windowEnd ?? null}
+            timeZone={timeZone}
+            now={new Date()}
+          />
+        </div>
+      ) : null}
       {documents?.ok ? (
         <div className="mt-5">
           <DocumentsCard

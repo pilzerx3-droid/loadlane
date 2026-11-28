@@ -33,6 +33,7 @@ export const mapDataSchema = z.object({
           lowQuality: z.boolean(),
         })
         .nullable(),
+      estimatedArrival: z.string().nullable().optional(),
     }),
   ),
   locationsWithoutCoordinates: z.array(

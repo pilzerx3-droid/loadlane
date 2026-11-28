@@ -15,3 +15,4 @@ export * from "./spot.ts";
 export * from "./tariff.ts";
 export * from "./integration.ts";
 export * from "./mail-log.ts";
+export * from "./eta.ts";

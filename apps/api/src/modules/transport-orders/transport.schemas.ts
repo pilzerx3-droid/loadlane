@@ -249,6 +249,10 @@ export const alertListSchema = z.object({
       firstPickupEnd: z.iso.datetime(),
       lastDeliveryEnd: z.iso.datetime(),
       lastPositionAt: z.iso.datetime().nullable(),
+      estimatedArrival: z.iso
+        .datetime()
+        .nullable()
+        .describe("From a routing provider, only while current. Driving time only."),
     }),
   ),
 });

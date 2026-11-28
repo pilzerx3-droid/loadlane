@@ -4,7 +4,12 @@ import {
   UnprocessableEntityException,
 } from "@nestjs/common";
 import { withTenant } from "@loadlane/db";
-import { positionAgeMs, positionFreshness, type PositionFreshness } from "@loadlane/shared";
+import {
+  etaIsCurrent,
+  positionAgeMs,
+  positionFreshness,
+  type PositionFreshness,
+} from "@loadlane/shared";
 import type pg from "pg";
 import { GeoProviderError, type GeocodingProvider } from "../../platform/geo-providers.ts";
 
@@ -54,6 +59,8 @@ export interface MapTransport {
     freshness: PositionFreshness;
     lowQuality: boolean;
   } | null;
+  /** From a routing provider, only while current. Driving time only: no traffic or breaks. */
+  estimatedArrival: string | null;
 }
 
 export interface MapData {
@@ -180,9 +187,11 @@ export class MapsService {
       const transports = await client.query<Row>(
         `SELECT t.id, t.number, t.status, t.customer_reference,
                 lp.latitude AS lp_latitude, lp.longitude AS lp_longitude, lp.recorded_at AS lp_recorded_at,
-                lp.low_quality AS lp_low_quality
+                lp.low_quality AS lp_low_quality,
+                e.eta_at, e.computed_at AS eta_computed_at
          FROM transport t
          LEFT JOIN last_position lp ON lp.transport_id = t.id AND lp.organization_id = t.organization_id
+         LEFT JOIN eta_estimate e ON e.transport_id = t.id AND e.organization_id = t.organization_id
          WHERE t.status <> ALL($1::transport_status[])
          ORDER BY t.number DESC
          LIMIT $2`,
@@ -247,6 +256,10 @@ export class MapsService {
                   lowQuality: row["lp_low_quality"] === true,
                 }
               : null,
+            estimatedArrival:
+              row["eta_at"] && etaIsCurrent(row["eta_computed_at"] as Date, now)
+                ? (row["eta_at"] as Date).toISOString()
+                : null,
           };
         }),
         locationsWithoutCoordinates: [...missing.values()],

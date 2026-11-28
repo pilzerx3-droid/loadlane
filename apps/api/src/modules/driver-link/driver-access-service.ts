@@ -74,7 +74,12 @@ function formatReference(number: number): string {
  * first, then runs inside the link's organization under row-level security.
  */
 export class DriverAccessService {
-  constructor(private readonly pool: pg.Pool) {}
+  constructor(
+    private readonly pool: pg.Pool,
+    /** Called after a position was stored (not awaited): used to refresh the estimated arrival. */
+    private readonly onPositionStored: (organizationId: string, transportId: string) => void = () =>
+      undefined,
+  ) {}
 
   /** Finds the link by the hash of the presented token. Unknown tokens, expired and revoked links each get their own answer. */
   async resolve(token: unknown): Promise<DriverGrant> {
@@ -259,6 +264,7 @@ export class DriverAccessService {
         values,
       );
     });
+    this.onPositionStored(grant.organizationId, grant.transportId);
   }
 
   private invalid(): NotFoundException {

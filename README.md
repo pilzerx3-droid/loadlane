@@ -2,12 +2,12 @@
 
 B2B SaaS for transport management, United States first. Three pillars: **SEE** (transport visibility), **CALCULATE** (freight calculator, tariffs, quotes) and **EXECUTE** (spot freight: offer, bid, award, track).
 
-Status: phases 1 to 6 are built: sign-in, organizations and roles; master data, transports, documents and an audit trail; Driver Link with consented GPS positions; alerts and a customer tracking link; freight calculator, price lists, quotes with PDF and transports from accepted quotes; spot freight with carrier links, bids and award; reports. Map, ETA, e-mail and the SAP connector are not built yet. See the backlogs in [docs](docs) and [docs/operations.md](docs/operations.md).
+Status: phases 1 to 6 are built: sign-in, organizations and roles; master data, transports, documents and an audit trail; Driver Link with consented GPS positions; alerts and a customer tracking link; freight calculator, price lists, quotes with PDF and transports from accepted quotes; spot freight with carrier links, bids and award; reports. Maps (OpenFreeMap), address lookup and arrival estimates (OpenRouteService) and e-mail (SMTP) are built behind provider interfaces; the OpenRouteService adapters have not been run against the live service yet. The SAP connector is not built. See the backlogs in [docs](docs) and [docs/operations.md](docs/operations.md).
 
 ## Requirements
 
 - Node.js 26 or newer (`.nvmrc`), pnpm 12 (`corepack enable` picks the pinned version)
-- Docker Desktop (local PostgreSQL + PostGIS, Valkey, SeaweedFS)
+- Docker Desktop (local PostgreSQL + PostGIS, Valkey, SeaweedFS, Mailpit)
 - A ZITADEL Cloud instance for sign-in: [docs/dev-setup-zitadel.md](docs/dev-setup-zitadel.md)
 
 ## Set up
@@ -16,7 +16,7 @@ Status: phases 1 to 6 are built: sign-in, organizations and roles; master data, 
 pnpm install
 cp .env.example .env      # then put your own OIDC values into .env
 pnpm infra:up             # local services
-pnpm infra:check          # all three reachable?
+pnpm infra:check          # all four reachable (Mailpit inbox: http://localhost:8025)
 pnpm db:migrate           # apply SQL migrations
 ```
 

@@ -55,6 +55,7 @@ const mapSchema = z.object({
           lowQuality: z.boolean(),
         })
         .nullable(),
+      estimatedArrival: z.iso.datetime().nullable(),
     }),
   ),
   locationsWithoutCoordinates: z.array(

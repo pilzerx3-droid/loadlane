@@ -29,6 +29,7 @@ export const alertListSchema = z.object({
       firstPickupEnd: z.string(),
       lastDeliveryEnd: z.string(),
       lastPositionAt: z.string().nullable(),
+      estimatedArrival: z.string().nullable().optional(),
     }),
   ),
 });
@@ -43,7 +44,8 @@ function conditionText(condition: string): string {
 
 /**
  * Transports that need attention. Each reason is a fact about the plan or the data received
- * (a window that passed, a position that is missing or old). Loadlane does not estimate arrivals.
+ * (a window that passed, a position that is missing or old) or a stored estimate from a routing
+ * provider that lands after the delivery window. Loadlane does not calculate arrival times itself.
  */
 export function AlertsList({ items, timeZone }: { items: AlertItem[]; timeZone: string }) {
   if (items.length === 0) {
@@ -81,7 +83,12 @@ export function AlertsList({ items, timeZone }: { items: AlertItem[]; timeZone: 
               <TableCell>
                 <ul className="space-y-0.5">
                   {item.conditions.map((condition) => (
-                    <li key={condition}>{conditionText(condition)}</li>
+                    <li key={condition}>
+                      {conditionText(condition)}
+                      {condition === "eta_late" && item.estimatedArrival
+                        ? ` (estimate ${formatInZone(item.estimatedArrival, timeZone)})`
+                        : ""}
+                    </li>
                   ))}
                 </ul>
               </TableCell>

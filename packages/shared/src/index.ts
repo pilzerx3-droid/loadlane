@@ -74,6 +74,8 @@ export {
   ALERT_CONDITIONS,
   ALERT_LABELS,
   alertConditions,
+  ETA_MAX_AGE_MS,
+  etaIsCurrent,
   type AlertCondition,
   type AlertInput,
 } from "./alerts.ts";
