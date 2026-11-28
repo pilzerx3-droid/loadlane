@@ -20,3 +20,4 @@
 | [0016](0016-late-detection-and-alerts.md) | Late detection and alerts without routing        | Accepted |
 | [0017](0017-customer-tracking-link.md)    | Customer tracking link                           | Accepted |
 | [0018](0018-hosting-test-environment.md)  | Hosted test environment                          | Proposed |
+| [0019](0019-spot-freight-model.md)        | Spot freight model                               | Accepted |
