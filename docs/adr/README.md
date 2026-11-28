@@ -19,3 +19,4 @@
 | [0015](0015-driver-link-and-gps.md)       | Driver Link and GPS tracking (Phase 3)           | Accepted |
 | [0016](0016-late-detection-and-alerts.md) | Late detection and alerts without routing        | Accepted |
 | [0017](0017-customer-tracking-link.md)    | Customer tracking link                           | Accepted |
+| [0018](0018-hosting-test-environment.md)  | Hosted test environment                          | Proposed |
