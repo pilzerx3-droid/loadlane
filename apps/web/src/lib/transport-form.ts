@@ -17,6 +17,8 @@ export interface TransportFormValues {
   weightLb: string;
   pieces: string;
   notes: string;
+  /** Set when the transport is made from an accepted quote (a hidden field of the form). */
+  quoteId: string;
   stops: StopValues[];
 }
 
@@ -33,6 +35,7 @@ export function emptyTransportForm(): TransportFormValues {
     weightLb: "",
     pieces: "",
     notes: "",
+    quoteId: "",
     stops: [emptyStop("pickup"), emptyStop("delivery")],
   };
 }
@@ -66,6 +69,7 @@ export function parseTransportForm(formData: FormData): TransportFormValues {
     weightLb: text(formData, "weightLb"),
     pieces: text(formData, "pieces"),
     notes: text(formData, "notes"),
+    quoteId: text(formData, "quoteId"),
     stops,
   };
 }
@@ -128,6 +132,7 @@ export function buildTransportInput(
       weightLb,
       pieces,
       notes: values.notes,
+      ...(values.quoteId === "" ? {} : { quoteId: values.quoteId }),
       stops,
     },
     errors,

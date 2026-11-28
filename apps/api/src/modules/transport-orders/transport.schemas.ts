@@ -51,7 +51,15 @@ const transportFields = {
   stops: stopsSchema,
 };
 
-export const createTransportSchema = z.strictObject(transportFields);
+export const createTransportSchema = z.strictObject({
+  ...transportFields,
+  quoteId: z
+    .uuid()
+    .optional()
+    .describe(
+      "An accepted quote of the same customer that this transport is made from (used once)",
+    ),
+});
 
 export const updateTransportSchema = z.strictObject({
   ...transportFields,

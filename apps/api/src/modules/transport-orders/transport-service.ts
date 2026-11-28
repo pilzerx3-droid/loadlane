@@ -284,10 +284,16 @@ export class TransportService {
       const id = created.rows[0]?.id ?? "";
       await this.insertStops(client, context, id, input.stops);
       await client.query(
-        `INSERT INTO transport_event (organization_id, transport_id, source, actor_user_id, from_status, to_status)
-         VALUES ($1, $2, 'user', $3, NULL, 'created')`,
-        [context.organizationId, id, context.userId],
+        `INSERT INTO transport_event (organization_id, transport_id, source, actor_user_id, from_status, to_status, note)
+         VALUES ($1, $2, 'user', $3, NULL, 'created', $4)`,
+        [
+          context.organizationId,
+          id,
+          context.userId,
+          input.quoteId ? "Created from an accepted quote" : null,
+        ],
       );
+      if (input.quoteId) await this.linkQuote(client, context, input.quoteId, input.customerId, id);
       await this.audit(client, context, "transport.created", id, {
         number,
         customerId: input.customerId,
@@ -298,6 +304,36 @@ export class TransportService {
       if (!detail) throw new NotFoundException();
       return detail;
     }
+  }
+
+  /**
+   * Links an accepted quote to the transport made from it: the quote must be accepted, not yet used
+   * and for the same customer. The link is set once and shown on the quote.
+   */
+  private async linkQuote(
+    client: pg.PoolClient,
+    context: TransportContext,
+    quoteId: string,
+    customerId: string,
+    transportId: string,
+  ): Promise<void> {
+    const quote = await client.query<Row>(
+      "SELECT status, customer_id, transport_id FROM quote WHERE id = $1 FOR UPDATE",
+      [quoteId],
+    );
+    const row = quote.rows[0];
+    const fail = (message: string, code: string): never => {
+      throw new ValidationFailedError([{ path: "quoteId", message, code }]);
+    };
+    if (!row) return fail("not found", "invalid_reference");
+    if (row["status"] !== "accepted")
+      return fail("only an accepted quote can become a transport", "invalid_value");
+    if (row["transport_id"] !== null)
+      return fail("this quote already became a transport", "already_used");
+    if (row["customer_id"] !== customerId)
+      return fail("must be for the same customer as the quote", "invalid_reference");
+    await client.query("UPDATE quote SET transport_id = $2 WHERE id = $1", [quoteId, transportId]);
+    await this.audit(client, context, "transport.created_from_quote", transportId, { quoteId });
   }
 
   async update(

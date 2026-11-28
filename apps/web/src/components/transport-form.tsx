@@ -76,6 +76,13 @@ export function TransportForm({
 
   return (
     <form action={action} className="max-w-3xl space-y-6" noValidate>
+      {v.quoteId !== "" ? <input type="hidden" name="quoteId" value={v.quoteId} /> : null}
+      {v.quoteId !== "" ? (
+        <Notice>
+          This transport is made from an accepted quote. Add the stops and times; the quote is
+          linked when you save.
+        </Notice>
+      ) : null}
       {state.message ? <Notice>{state.message}</Notice> : null}
       {errors["stops"] ? <Notice>{errors["stops"]}</Notice> : null}
 

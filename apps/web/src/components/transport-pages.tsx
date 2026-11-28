@@ -5,9 +5,10 @@ import { apiRequest } from "../lib/api-client";
 import { getAuthDeps } from "../lib/deps";
 import { documentListSchema } from "../lib/documents";
 import { driverLinkListSchema } from "../lib/driver-links";
+import { quoteDetailSchema } from "../lib/quotes";
 import { trackingLinkListSchema } from "../lib/tracking-links";
 import { parsePage } from "../lib/paging";
-import { isoToLocalInput } from "@loadlane/shared";
+import { formatUsd, isoToLocalInput } from "@loadlane/shared";
 import {
   locationOptionListSchema,
   optionListSchema,
@@ -137,6 +138,7 @@ function valuesOf(transport: TransportDetail): TransportFormValues {
   return {
     customerId: transport.customer.id,
     carrierId: transport.carrier?.id ?? "",
+    quoteId: "",
     customerReference: transport.customerReference ?? "",
     purchaseOrder: transport.purchaseOrder ?? "",
     weightLb: transport.weightLb === null ? "" : String(transport.weightLb),
@@ -153,7 +155,7 @@ function valuesOf(transport: TransportDetail): TransportFormValues {
 }
 
 /** The form to create a transport (`id` undefined) or to change one. */
-export async function TransportFormPage({ id }: { id?: string }) {
+export async function TransportFormPage({ id, quoteId }: { id?: string; quoteId?: string }) {
   const { viewer, allowed } = await requireOrganizationPage("transport:manage");
   const title = id === undefined ? "New transport" : "Edit transport";
 
@@ -206,10 +208,28 @@ export async function TransportFormPage({ id }: { id?: string }) {
     } else {
       const options = (items: { id: string; name: string }[]): Option[] =>
         items.map((item) => ({ id: item.id, label: item.name }));
+      // A transport made from an accepted quote starts with the customer and a reference to the quote.
+      let initial = existing?.ok ? valuesOf(existing.data) : emptyTransportForm();
+      if (id === undefined && quoteId && viewer.active.permissions.includes("quote:read")) {
+        const quote = await call(
+          viewer,
+          `/v1/quotes/${encodeURIComponent(quoteId)}`,
+          quoteDetailSchema,
+        );
+        if (quote.ok && quote.data.status === "accepted" && quote.data.transport === null) {
+          initial = {
+            ...initial,
+            customerId: quote.data.customer.id,
+            customerReference: quote.data.reference,
+            notes: `From quote ${quote.data.reference} (${formatUsd(quote.data.priceCents)}) for ${quote.data.calculationName}`,
+            quoteId: quote.data.id,
+          };
+        }
+      }
       content = (
         <TransportForm
           id={id ?? ""}
-          values={existing?.ok ? valuesOf(existing.data) : emptyTransportForm()}
+          values={initial}
           customers={options(customers.data.items)}
           carriers={options(carriers.data.items)}
           locations={locations.data.items.map((item) => ({

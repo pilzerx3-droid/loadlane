@@ -11,6 +11,7 @@ import {
   text,
   timestamp,
   unique,
+  uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
 import { appUser } from "./app-user.ts";
@@ -18,6 +19,7 @@ import { calculation } from "./calculation.ts";
 import { createdAtColumn, idColumn } from "./columns.ts";
 import { customer } from "./directory.ts";
 import { organization } from "./organization.ts";
+import { transport } from "./transport.ts";
 
 export const quoteStatusEnum = pgEnum("quote_status", [
   "draft",
@@ -55,6 +57,8 @@ export const quote = pgTable(
     validUntil: date("valid_until", { mode: "string" }).notNull(),
     terms: text("terms"),
     notes: text("notes"),
+    /** Set when an accepted quote was turned into a transport. At most one quote per transport. */
+    transportId: uuid("transport_id"),
     sentAt: timestamp("sent_at", { withTimezone: true, mode: "date" }),
     decidedAt: timestamp("decided_at", { withTimezone: true, mode: "date" }),
     createdByUserId: uuid("created_by_user_id")
@@ -75,6 +79,18 @@ export const quote = pgTable(
       columns: [t.customerId, t.organizationId],
       foreignColumns: [customer.id, customer.organizationId],
     }),
+    foreignKey({
+      name: "quote_transport_org_fk",
+      columns: [t.transportId, t.organizationId],
+      foreignColumns: [transport.id, transport.organizationId],
+    }),
+    uniqueIndex("quote_one_per_transport")
+      .on(t.transportId)
+      .where(sql`${t.transportId} IS NOT NULL`),
+    check(
+      "quote_transport_only_when_accepted",
+      sql`${t.transportId} IS NULL OR ${t.status} = 'accepted'`,
+    ),
     foreignKey({
       name: "quote_organization_fk",
       columns: [t.organizationId],

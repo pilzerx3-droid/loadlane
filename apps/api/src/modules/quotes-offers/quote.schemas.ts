@@ -51,6 +51,10 @@ export const quoteSummarySchema = z.object({
 });
 
 export const quoteDetailSchema = quoteSummarySchema.extend({
+  transport: z
+    .object({ id: z.uuid(), reference: z.string() })
+    .nullable()
+    .describe("The transport made from this quote, once there is one"),
   allowedStatuses: z.array(status),
   editable: z.boolean(),
   terms: z.string().nullable(),

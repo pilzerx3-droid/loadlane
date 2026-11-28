@@ -21,6 +21,7 @@ export const quoteListSchema = z.object({
 });
 
 export const quoteDetailSchema = quoteSummarySchema.extend({
+  transport: z.object({ id: z.string(), reference: z.string() }).nullable(),
   allowedStatuses: z.array(z.string()),
   editable: z.boolean(),
   terms: z.string().nullable(),

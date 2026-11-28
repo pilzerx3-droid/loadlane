@@ -183,6 +183,70 @@ describe("status model and editing", () => {
   });
 });
 
+describe("from an accepted quote to a transport", () => {
+  it("links the transport to the quote once, for the same customer, only when accepted", async () => {
+    const w = await adminWorkspace();
+    const location = await body(
+      await api.call("/v1/locations", {
+        ...w.as,
+        json: {
+          name: "Dock",
+          addressLine1: "1 Main St",
+          city: "Dallas",
+          state: "TX",
+          postalCode: "75001",
+          timezone: "America/Chicago",
+        },
+      }),
+    );
+    const stop = (type: string) => ({
+      type,
+      locationId: location["id"],
+      windowStart: "2030-12-01T14:00:00-06:00",
+      windowEnd: "2030-12-01T16:00:00-06:00",
+    });
+    const make = (quoteId: unknown, customerId: unknown = w.customerId) =>
+      api.call("/v1/transports", {
+        ...w.as,
+        json: { customerId, quoteId, stops: [stop("pickup"), stop("delivery")] },
+      });
+    const quote = await body(await w.quote(String((await w.calc())["id"])));
+    const id = String(quote["id"]);
+    expect(quote["transport"]).toBeNull();
+
+    // A draft quote cannot become a transport.
+    const early = await make(id);
+    expect(early.status).toBe(400);
+    expect(JSON.stringify(await body(early))).toContain("accepted");
+
+    for (const status of ["sent", "accepted"]) {
+      await api.call(`/v1/quotes/${id}/status`, { ...w.as, json: { status } });
+    }
+    // Another customer does not match.
+    const other = await body(await api.call("/v1/customers", { ...w.as, json: { name: "Other" } }));
+    expect((await make(id, other["id"])).status).toBe(400);
+
+    const created = await make(id);
+    expect(created.status).toBe(201);
+    const transport = await body(created);
+    const linked = await body(await api.call(`/v1/quotes/${id}`, w.as));
+    expect(linked["transport"]).toEqual({ id: transport["id"], reference: transport["reference"] });
+    expect(((transport["events"] as Json[])[0] as Json)["note"]).toBe(
+      "Created from an accepted quote",
+    );
+
+    // The same quote cannot be used twice, and an unknown quote is refused.
+    const again = await make(id);
+    expect(again.status).toBe(400);
+    expect(JSON.stringify(await body(again))).toContain("already");
+    expect((await make("11111111-1111-4111-8111-111111111111")).status).toBe(400);
+    const audit = await body(await api.call("/v1/audit?entityType=transport", w.as));
+    expect((audit["items"] as Json[]).map((item) => item["action"])).toContain(
+      "transport.created_from_quote",
+    );
+  });
+});
+
 describe("the quote PDF", () => {
   it("downloads as a PDF without cost or margin, is audited, and respects permissions and organizations", async () => {
     const w = await adminWorkspace();

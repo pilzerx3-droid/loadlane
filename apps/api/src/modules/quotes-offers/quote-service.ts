@@ -34,11 +34,12 @@ export function quoteReference(number: number): string {
 const COLUMNS = `q.id, q.number, q.status, q.price_cents, q.valid_until::text AS valid_until, q.terms, q.notes,
   q.sent_at, q.decided_at, q.created_at, q.created_by_user_id, u.display_name,
   q.customer_id, cu.name AS customer_name, q.calculation_id, ca.name AS calculation_name,
-  ca.cost_cents, ca.contribution_cents, ca.markup_bp, ca.margin_bp`;
+  ca.cost_cents, ca.contribution_cents, ca.markup_bp, ca.margin_bp, q.transport_id, tr.number AS transport_number`;
 const FROM = `quote q
   JOIN app_user u ON u.id = q.created_by_user_id
   JOIN customer cu ON cu.id = q.customer_id AND cu.organization_id = q.organization_id
-  JOIN calculation ca ON ca.id = q.calculation_id AND ca.organization_id = q.organization_id`;
+  JOIN calculation ca ON ca.id = q.calculation_id AND ca.organization_id = q.organization_id
+  LEFT JOIN transport tr ON tr.id = q.transport_id AND tr.organization_id = q.organization_id`;
 
 function summaryOf(row: Row, today: string): QuoteSummary {
   const status = row["status"] as QuoteStatus;
@@ -63,6 +64,13 @@ function detailOf(row: Row, today: string): QuoteDetail {
   const decidedAt = row["decided_at"] as Date | null;
   return {
     ...summaryOf(row, today),
+    transport:
+      row["transport_id"] === null
+        ? null
+        : {
+            id: row["transport_id"] as string,
+            reference: `LL-${String(Number(row["transport_number"])).padStart(6, "0")}`,
+          },
     allowedStatuses: [...nextQuoteStatuses(status)],
     editable: isQuoteEditable(status),
     terms: row["terms"] as string | null,

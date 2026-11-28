@@ -49,6 +49,7 @@ export default async function QuotePage({
           <QuoteDetailView
             quote={quote.data}
             canManage={canManage}
+            canCreateTransport={viewer.active.permissions.includes("transport:manage")}
             timeZone={organization.ok ? organization.data.timezone : "UTC"}
           />
         </div>

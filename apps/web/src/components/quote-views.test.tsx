@@ -25,6 +25,7 @@ const summary: QuoteSummary = {
 
 const detail: QuoteDetail = {
   ...summary,
+  transport: null,
   status: "draft",
   allowedStatuses: ["sent", "cancelled"],
   editable: true,
@@ -87,6 +88,40 @@ describe("QuoteDetailView", () => {
     expect(done).not.toContain("Next step");
     expect(done).not.toContain("Edit draft");
     expect(done).toContain("Accepted");
+  });
+});
+
+describe("QuoteDetailView after acceptance", () => {
+  const accepted = { ...detail, status: "accepted", allowedStatuses: [], editable: false };
+
+  it("offers to create the transport only to people who may, and links it once it exists", () => {
+    const withButton = renderToStaticMarkup(
+      <QuoteDetailView quote={accepted} canManage canCreateTransport timeZone="UTC" />,
+    );
+    expect(withButton).toContain(`/transports/new?quote=${detail.id}`);
+    const without = renderToStaticMarkup(
+      <QuoteDetailView quote={accepted} canManage canCreateTransport={false} timeZone="UTC" />,
+    );
+    expect(without).not.toContain("/transports/new?quote=");
+    const linked = renderToStaticMarkup(
+      <QuoteDetailView
+        quote={{ ...accepted, transport: { id: "t1", reference: "LL-000012" } }}
+        canManage
+        canCreateTransport
+        timeZone="UTC"
+      />,
+    );
+    expect(linked).toContain("LL-000012");
+    expect(linked).toContain("was created from this quote");
+    expect(linked).not.toContain("/transports/new?quote=");
+  });
+
+  it("says nothing about transports while the quote is not accepted", () => {
+    expect(
+      renderToStaticMarkup(
+        <QuoteDetailView quote={detail} canManage canCreateTransport timeZone="UTC" />,
+      ),
+    ).not.toContain("Create transport from this quote");
   });
 });
 

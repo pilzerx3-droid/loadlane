@@ -181,10 +181,13 @@ export function NewQuoteForm({
 export function QuoteDetailView({
   quote,
   canManage,
+  canCreateTransport = false,
   timeZone,
 }: {
   quote: QuoteDetail;
   canManage: boolean;
+  /** Whether the person may create transports (a different permission than managing quotes). */
+  canCreateTransport?: boolean;
   timeZone: string;
 }) {
   const next = quote.allowedStatuses;
@@ -241,6 +244,33 @@ export function QuoteDetailView({
           {quote.notes ? ` · Notes: ${quote.notes}` : ""}
         </p>
       </Card>
+
+      {quote.status === "accepted" ? (
+        <Card className="space-y-2 p-5 text-sm">
+          <h2 className="text-base font-semibold">Transport</h2>
+          {quote.transport ? (
+            <p>
+              Transport{" "}
+              <a href={`/transports/${quote.transport.id}`} className="underline">
+                {quote.transport.reference}
+              </a>{" "}
+              was created from this quote.
+            </p>
+          ) : (
+            <>
+              <p className="text-muted-foreground">
+                The customer accepted. Create the transport from this quote: the customer, the price
+                reference and a note are filled in, you add stops and times.
+              </p>
+              {canCreateTransport ? (
+                <Button asChild variant="solid">
+                  <a href={`/transports/new?quote=${quote.id}`}>Create transport from this quote</a>
+                </Button>
+              ) : null}
+            </>
+          )}
+        </Card>
+      ) : null}
 
       {canManage && next.length > 0 ? (
         <Card className="space-y-3 p-5">
