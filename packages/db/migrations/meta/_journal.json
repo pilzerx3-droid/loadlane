@@ -99,6 +99,13 @@
       "when": 1795854074641,
       "tag": "0013_quotes",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1795854559431,
+      "tag": "0014_spot_freight",
+      "breakpoints": true
     }
   ]
 }

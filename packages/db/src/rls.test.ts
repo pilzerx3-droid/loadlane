@@ -36,6 +36,9 @@ const TENANT_TABLES = [
   "calculation",
   "quote_counter",
   "quote",
+  "spot_tender",
+  "spot_invitation",
+  "spot_bid",
 ] as const;
 
 /** Tables in schema public that deliberately have no row-level security. */
@@ -89,9 +92,10 @@ async function seedOrganization(
       "INSERT INTO customer (organization_id, name) VALUES ($1, 'Customer') RETURNING id",
       [organizationId],
     );
-    await c.query("INSERT INTO carrier (organization_id, name) VALUES ($1, 'Carrier')", [
-      organizationId,
-    ]);
+    const carrierRow = await c.query<{ id: string }>(
+      "INSERT INTO carrier (organization_id, name) VALUES ($1, 'Carrier') RETURNING id",
+      [organizationId],
+    );
     const locationRow = await c.query<{ id: string }>(
       "INSERT INTO location (organization_id, name, address_line1, city, state, postal_code, timezone) VALUES ($1, 'Dock', '1 Main St', 'Dallas', 'TX', '75001', 'America/Chicago') RETURNING id",
       [organizationId],
@@ -134,6 +138,24 @@ async function seedOrganization(
     await c.query(
       "INSERT INTO quote (organization_id, number, calculation_id, customer_id, price_cents, valid_until, created_by_user_id) VALUES ($1, 1, $2, $3, 103500, current_date + 14, $4)",
       [organizationId, calculationRow.rows[0]?.id, customerRow.rows[0]?.id, adminUserId],
+    );
+    const tenderRow = await c.query<{ id: string }>(
+      "INSERT INTO spot_tender (organization_id, transport_id, response_deadline, created_by_user_id) VALUES ($1, $2, now() + interval '1 day', $3) RETURNING id",
+      [organizationId, transportRow.rows[0]?.id, adminUserId],
+    );
+    const invitationRow = await c.query<{ id: string }>(
+      "INSERT INTO spot_invitation (organization_id, tender_id, carrier_id, token_hash, expires_at, created_by_user_id) VALUES ($1, $2, $3, $4, now() + interval '1 day', $5) RETURNING id",
+      [
+        organizationId,
+        tenderRow.rows[0]?.id,
+        carrierRow.rows[0]?.id,
+        createHash("sha256").update(`spot-${organizationId}`).digest("hex"),
+        adminUserId,
+      ],
+    );
+    await c.query(
+      "INSERT INTO spot_bid (organization_id, tender_id, carrier_id, invitation_id, price_cents) VALUES ($1, $2, $3, $4, 85000)",
+      [organizationId, tenderRow.rows[0]?.id, carrierRow.rows[0]?.id, invitationRow.rows[0]?.id],
     );
     await c.query(
       "INSERT INTO tracking_link (organization_id, transport_id, token_hash, expires_at, created_by_user_id) VALUES ($1, $2, $3, now() + interval '2 days', $4)",
@@ -265,6 +287,21 @@ describe("tenant isolation", () => {
         [orgB, userA],
       ],
       ["quote_counter", "INSERT INTO quote_counter (organization_id) VALUES ($1)", [orgB]],
+      [
+        "spot_tender",
+        "INSERT INTO spot_tender (organization_id, transport_id, response_deadline, created_by_user_id) VALUES ($1, gen_random_uuid(), now(), $2)",
+        [orgB, userA],
+      ],
+      [
+        "spot_invitation",
+        "INSERT INTO spot_invitation (organization_id, tender_id, carrier_id, token_hash, expires_at, created_by_user_id) VALUES ($1, gen_random_uuid(), gen_random_uuid(), repeat('c', 64), now(), $2)",
+        [orgB, userA],
+      ],
+      [
+        "spot_bid",
+        "INSERT INTO spot_bid (organization_id, tender_id, carrier_id, price_cents, entered_by_user_id) VALUES ($1, gen_random_uuid(), gen_random_uuid(), 100, $2)",
+        [orgB, userA],
+      ],
       [
         "quote",
         "INSERT INTO quote (organization_id, number, calculation_id, customer_id, price_cents, valid_until, created_by_user_id) VALUES ($1, 9, gen_random_uuid(), gen_random_uuid(), 1, current_date, $2)",
@@ -456,6 +493,57 @@ describe("tenant isolation", () => {
     );
   });
 
+  it("spot freight: tokens reveal one invitation, nothing is deleted, bids keep one live price per carrier", async () => {
+    const hash = createHash("sha256").update(`spot-${orgA}`).digest("hex");
+    const own = await run({ spotTokenHash: hash }, (c) =>
+      c.query<{ organization_id: string }>("SELECT organization_id FROM spot_invitation"),
+    );
+    expect(own.rows.map((row) => row.organization_id)).toEqual([orgA]);
+    expect(await count({ spotTokenHash: hash }, "FROM spot_tender")).toBe(0);
+    expect(await count({ spotTokenHash: hash }, "FROM spot_bid")).toBe(0);
+    expect(await count({ driverTokenHash: hash }, "FROM spot_invitation")).toBe(0);
+    for (const table of ["spot_tender", "spot_invitation", "spot_bid"]) {
+      await expectPgError(
+        run({ organizationId: orgA }, (c) => c.query(`DELETE FROM ${table}`)),
+        "42501",
+      );
+    }
+    await expectPgError(
+      run({ organizationId: orgA }, (c) => c.query("UPDATE spot_bid SET price_cents = 1")),
+      "42501",
+    );
+    // A second live bid of the same carrier on the same tender is refused; a superseded one is not.
+    const ids = await run({ organizationId: orgA }, (c) =>
+      c.query<{ tender_id: string; carrier_id: string; invitation_id: string }>(
+        "SELECT tender_id, carrier_id, invitation_id FROM spot_bid",
+      ),
+    );
+    const bid = ids.rows[0];
+    const insert = () =>
+      run({ organizationId: orgA }, (c) =>
+        c.query(
+          "INSERT INTO spot_bid (organization_id, tender_id, carrier_id, invitation_id, price_cents) VALUES ($1, $2, $3, $4, 80000)",
+          [orgA, bid?.tender_id, bid?.carrier_id, bid?.invitation_id],
+        ),
+      );
+    await expectPgError(insert(), "23505");
+    await run({ organizationId: orgA }, (c) =>
+      c.query("UPDATE spot_bid SET status = 'superseded'"),
+    );
+    await insert();
+    // One open tender per transport.
+    await expectPgError(
+      run({ organizationId: orgA, userId: userA }, async (c) => {
+        const t = await c.query<{ transport_id: string }>("SELECT transport_id FROM spot_tender");
+        await c.query(
+          "INSERT INTO spot_tender (organization_id, transport_id, response_deadline, created_by_user_id) VALUES ($1, $2, now(), $3)",
+          [orgA, t.rows[0]?.transport_id, userA],
+        );
+      }),
+      "23505",
+    );
+  });
+
   it("position_event: cannot be updated, other organizations cannot delete, bad coordinates fail", async () => {
     await expectPgError(
       run({ organizationId: orgA }, (c) => c.query("UPDATE position_event SET latitude = 0")),
@@ -506,6 +594,9 @@ describe("tenant isolation", () => {
       "calculation",
       "quote_counter",
       "quote",
+      "spot_tender",
+      "spot_invitation",
+      "spot_bid",
     ]) {
       expect(await count({}, `FROM ${table}`), table).toBe(0);
     }
