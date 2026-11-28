@@ -69,6 +69,8 @@ Driver Link (ADR 0015): drivers use a capability link (/d/<token> in the web app
 
 Notes: TypeScript is pinned to 6.0.x until typescript-eslint supports 7.x. Tests in `packages/db`, `apps/api` and `apps/web` need the local stack running. Local stack uses Valkey (BSD-3) instead of Redis and SeaweedFS (Apache-2.0) instead of MinIO for license reasons.
 
+Commercial modules (ADR 0007, 0016 to 0019): money is whole cents and rates are basis points everywhere (`packages/shared/src/money.ts`); markup, margin and contribution are separate and never converted. A calculation is a frozen snapshot (`calculation`, never updated) and records the tariff versions it used. Quotes copy the price of one calculation, follow `quote-status.ts`, expire by date (derived) and can create one transport once accepted (`quote.transport_id`). Tariffs are immutable dated versions (`tariff_version`); `applyTariff` in `packages/shared` turns a version plus quantities into cost lines and never guesses a missing quantity. Spot freight (`spot_tender`, `spot_invitation`, `spot_bid`) offers an existing transport to chosen carriers through capability links (`X-Spot-Token`, `/s/<token>`); awarding is always a human decision and moves the transport to assigned through the normal history. Customer tracking links (`X-Tracking-Token`, `/t/<token>`) never show a driver position. Reports (`/v1/reports/commercial`) are computed from stored data only. The worker (`pnpm worker:start`) deletes old driver positions. Operations, backups and the pre-launch checklist are in `docs/operations.md`.
+
 ## Current phase
 
-Phase 1, see docs/backlog-phase-1.md.
+Phases 1 to 6 are built (see `docs/backlog-phase-*.md`). Open: map, ETA and e-mail (need provider decisions), SAP connector (needs a test system; ADR 0009), legal texts and retention periods (product owner), hosted environment (ADR 0018, deferred), CSP for the web app, shared rate-limit store, partner API keys and webhooks.

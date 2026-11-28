@@ -1,6 +1,6 @@
 # Phase 5: Freight calculation and quotes
 
-Goal: costs in, price and margin out, frozen as snapshots (ADR 0007), then quotes that turn into transports. Decisions: markup, margin and contribution are never mixed (CLAUDE.md rule 6). Status: **in progress**.
+Goal: costs in, price and margin out, frozen as snapshots (ADR 0007), then quotes that turn into transports. Decisions: markup, margin and contribution are never mixed (CLAUDE.md rule 6). Status: **done except variants comparison (P5-06)**.
 
 | ID    | Task                        | Status | Notes                                                                                                                                                                                                                                                         |
 | ----- | --------------------------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |

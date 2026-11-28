@@ -2,7 +2,7 @@
 
 B2B SaaS for transport management, United States first. Three pillars: **SEE** (transport visibility), **CALCULATE** (freight calculator, tariffs, quotes) and **EXECUTE** (spot freight: offer, bid, award, track).
 
-Status: Phase 1 (technical foundation). Sign-in, organizations, roles, the API foundation and the web shell work. There are no transports yet; see [docs/backlog-phase-1.md](docs/backlog-phase-1.md).
+Status: phases 1 to 6 are built: sign-in, organizations and roles; master data, transports, documents and an audit trail; Driver Link with consented GPS positions; alerts and a customer tracking link; freight calculator, price lists, quotes with PDF and transports from accepted quotes; spot freight with carrier links, bids and award; reports. Map, ETA, e-mail and the SAP connector are not built yet. See the backlogs in [docs](docs) and [docs/operations.md](docs/operations.md).
 
 ## Requirements
 

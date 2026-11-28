@@ -1,6 +1,6 @@
 # Phase 6: Spot freight
 
-Goal: offer a load to chosen carriers, compare their bids, award, and track the transport in the same place. Decisions: ADR 0019. Status: **in progress**.
+Goal: offer a load to chosen carriers, compare their bids, award, and track the transport in the same place. Decisions: ADR 0019. Status: **done**.
 
 | ID    | Task                 | Status | Notes                                                                                                  |
 | ----- | -------------------- | ------ | ------------------------------------------------------------------------------------------------------ |
@@ -8,4 +8,4 @@ Goal: offer a load to chosen carriers, compare their bids, award, and track the 
 | P6-02 | Staff API            | Done   | Create tender from a transport, invite carriers (links shown once), manual bids, award, close, cancel. |
 | P6-03 | Carrier link page    | Done   | `/s/[token]`: lane summary, submit and withdraw a bid. Capability link like Driver Link.               |
 | P6-04 | Staff pages          | Done   | Spot freight list and detail with bid comparison; action on the transport page.                        |
-| P6-05 | Alerts and dashboard | Open   | Open tenders, tenders past their deadline without award, bids received.                                |
+| P6-05 | Alerts and dashboard | Done   | Open tenders, tenders past their deadline without award, bids received.                                |

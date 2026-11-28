@@ -1,6 +1,6 @@
 # Phase 4: Visibility, alerts and customer tracking
 
-Goal: dispatchers see what needs attention without any estimate. Decisions: ADR 0016. Status: **in progress (4a), no external providers yet**.
+Goal: dispatchers see what needs attention without any estimate. Decisions: ADR 0016. Status: **4a done (alerts, customer tracking link); map, ETA and e-mail wait for provider decisions**.
 
 | ID    | Task                   | Status  | Notes                                                                                                          |
 | ----- | ---------------------- | ------- | -------------------------------------------------------------------------------------------------------------- |
