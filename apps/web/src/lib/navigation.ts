@@ -9,6 +9,7 @@ export type NavIcon =
   | "reports"
   | "integrations"
   | "transports"
+  | "map"
   | "customers"
   | "carriers"
   | "locations"
@@ -31,6 +32,7 @@ export interface NavItem {
 export const NAV_ITEMS: readonly NavItem[] = [
   { href: "/", label: "Overview", icon: "overview" },
   { href: "/transports", label: "Transports", icon: "transports", requires: "transport:read" },
+  { href: "/map", label: "Map", icon: "map", requires: "transport:read" },
   { href: "/alerts", label: "Alerts", icon: "alerts", requires: "transport:read" },
   {
     href: "/calculations",

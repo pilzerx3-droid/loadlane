@@ -3,7 +3,12 @@
  * when they carry the nonce (or were started by such a script), so injected markup cannot execute.
  * Development needs `unsafe-eval` for React's tooling; production does not.
  */
-export function buildCsp(nonce: string, development: boolean): string {
+export function buildCsp(
+  nonce: string,
+  development: boolean,
+  /** Hosts the map page may load tiles, sprites and fonts from. Empty on every other page. */
+  mapOrigins: readonly string[] = [],
+): string {
   const directives: Record<string, string[]> = {
     "default-src": ["'self'"],
     "script-src": [
@@ -14,13 +19,15 @@ export function buildCsp(nonce: string, development: boolean): string {
     ],
     // Tailwind and Next emit style attributes; styles cannot run code.
     "style-src": ["'self'", "'unsafe-inline'"],
-    "img-src": ["'self'", "data:", "blob:"],
+    "img-src": ["'self'", "data:", "blob:", ...mapOrigins],
     "font-src": ["'self'"],
-    "connect-src": ["'self'"],
+    "connect-src": ["'self'", ...mapOrigins],
     "object-src": ["'none'"],
     "base-uri": ["'self'"],
     "form-action": ["'self'"],
     "frame-ancestors": ["'none'"],
+    // The map draws in a web worker that MapLibre starts from a blob.
+    ...(mapOrigins.length > 0 ? { "worker-src": ["'self'", "blob:"] } : {}),
   };
   return Object.entries(directives)
     .map(([name, values]) => `${name} ${values.join(" ")}`)

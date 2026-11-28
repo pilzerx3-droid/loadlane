@@ -1,5 +1,15 @@
 import { sql } from "drizzle-orm";
-import { index, pgTable, text, timestamp, unique, uniqueIndex, uuid } from "drizzle-orm/pg-core";
+import {
+  check,
+  doublePrecision,
+  index,
+  pgTable,
+  text,
+  timestamp,
+  unique,
+  uniqueIndex,
+  uuid,
+} from "drizzle-orm/pg-core";
 import { createdAtColumn, idColumn, updatedAtColumn } from "./columns.ts";
 import { organization } from "./organization.ts";
 
@@ -68,7 +78,8 @@ export const carrier = pgTable(
 
 /**
  * A place where freight is picked up or delivered. The time zone is the place's own: appointment
- * windows are interpreted in it. There are no coordinates yet; they come with geocoding and are never guessed.
+ * windows are interpreted in it. Coordinates exist only when a geocoding provider returned them or a
+ * person entered them; they are never guessed, and they are cleared when the address changes.
  */
 export const location = pgTable(
   "location",
@@ -88,6 +99,11 @@ export const location = pgTable(
     /** IANA time zone of the place, for example America/Denver. */
     timezone: text("timezone").notNull(),
     notes: text("notes"),
+    latitude: doublePrecision("latitude"),
+    longitude: doublePrecision("longitude"),
+    /** When the coordinates were set, and by whom: a geocoding provider or a person. */
+    geocodedAt: timestamp("geocoded_at", { withTimezone: true, mode: "date" }),
+    geocodeSource: text("geocode_source"),
     archivedAt: archivedAtColumn(),
     createdAt: createdAtColumn(),
     updatedAt: updatedAtColumn(),
@@ -95,5 +111,19 @@ export const location = pgTable(
   (t) => [
     unique("location_id_org_key").on(t.id, t.organizationId),
     index("location_org_name_idx").on(t.organizationId, t.name),
+    check(
+      "location_coordinates_consistent",
+      sql`(${t.latitude} IS NULL) = (${t.longitude} IS NULL)
+        AND (${t.latitude} IS NULL) = (${t.geocodedAt} IS NULL)
+        AND (${t.latitude} IS NULL) = (${t.geocodeSource} IS NULL)`,
+    ),
+    check(
+      "location_coordinates_range",
+      sql`${t.latitude} BETWEEN -90 AND 90 AND ${t.longitude} BETWEEN -180 AND 180 OR ${t.latitude} IS NULL`,
+    ),
+    check(
+      "location_geocode_source",
+      sql`${t.geocodeSource} IS NULL OR ${t.geocodeSource} IN ('provider', 'manual')`,
+    ),
   ],
 );

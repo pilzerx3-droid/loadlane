@@ -9,6 +9,7 @@ import { parsePage } from "../lib/paging";
 import { requireOrganizationPage } from "../lib/viewer";
 import { setArchivedAction } from "../app/master-data-actions";
 import { AppShell } from "./app-shell";
+import { LocationCoordinatesCard } from "./location-coordinates-card";
 import { MasterDataForm } from "./master-data-form";
 import { MasterDataList } from "./master-data-list";
 import { ForbiddenNotice, Notice } from "./notices";
@@ -101,7 +102,16 @@ export async function MasterDataListPage({
 }
 
 /** The page to add a record (`id` undefined) or to change one. */
-export async function MasterDataFormPage({ kind, id }: { kind: MasterDataKey; id?: string }) {
+export async function MasterDataFormPage({
+  kind,
+  id,
+  geoNotice,
+}: {
+  kind: MasterDataKey;
+  id?: string;
+  /** Outcome of the last coordinates action (locations only), from the page address. */
+  geoNotice?: string;
+}) {
   const config = MASTER_DATA[kind];
   const { viewer, allowed } = await requireOrganizationPage(config.manage);
   const title = id === undefined ? `Add ${config.singular}` : `Edit ${config.singular}`;
@@ -151,6 +161,16 @@ export async function MasterDataFormPage({ kind, id }: { kind: MasterDataKey; id
           <Card className="p-5">
             <MasterDataForm config={config} id={id} values={values} />
           </Card>
+          {kind === "locations" ? (
+            <LocationCoordinatesCard
+              id={id}
+              latitude={typeof record["latitude"] === "number" ? record["latitude"] : null}
+              longitude={typeof record["longitude"] === "number" ? record["longitude"] : null}
+              source={typeof record["geocodeSource"] === "string" ? record["geocodeSource"] : null}
+              geocodedAt={typeof record["geocodedAt"] === "string" ? record["geocodedAt"] : null}
+              notice={geoNotice}
+            />
+          ) : null}
           <form action={setArchivedAction.bind(null, kind, id, !archived)}>
             <Button type="submit" variant="outline">
               {archived ? `Restore ${config.singular}` : `Archive ${config.singular}`}

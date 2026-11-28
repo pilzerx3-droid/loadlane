@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { buildCsp, newNonce } from "./lib/csp";
+import { mapConfig } from "./lib/map-config";
 
 /**
  * Sets the Content Security Policy for every page with a fresh nonce. The policy goes on the request
@@ -7,7 +8,11 @@ import { buildCsp, newNonce } from "./lib/csp";
  */
 export function proxy(request: NextRequest): NextResponse {
   const nonce = newNonce();
-  const csp = buildCsp(nonce, process.env.NODE_ENV !== "production");
+  // Only the map page may contact a tile server.
+  const mapOrigins = request.nextUrl.pathname.startsWith("/map")
+    ? mapConfig(process.env).origins
+    : [];
+  const csp = buildCsp(nonce, process.env.NODE_ENV !== "production", mapOrigins);
   const headers = new Headers(request.headers);
   headers.set("x-nonce", nonce);
   headers.set("content-security-policy", csp);

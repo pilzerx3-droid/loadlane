@@ -15,6 +15,15 @@ describe("buildCsp", () => {
     expect(csp).not.toMatch(/https?:\/\//);
   });
 
+  it("opens tile hosts only when asked and adds the map worker", () => {
+    const csp = buildCsp("n", false, ["https://tiles.openfreemap.org"]);
+    expect(csp).toContain("connect-src 'self' https://tiles.openfreemap.org");
+    expect(csp).toContain("img-src 'self' data: blob: https://tiles.openfreemap.org");
+    expect(csp).toContain("worker-src 'self' blob:");
+    expect(csp).toContain("script-src 'self' 'nonce-n' 'strict-dynamic'");
+    expect(buildCsp("n", false)).not.toContain("worker-src");
+  });
+
   it("adds unsafe-eval only in development", () => {
     expect(buildCsp("n", true)).toContain("'unsafe-eval'");
     expect(buildCsp("n", false)).not.toContain("'unsafe-eval'");

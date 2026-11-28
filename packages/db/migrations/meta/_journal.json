@@ -141,6 +141,13 @@
       "when": 1795866994796,
       "tag": "0019_mail_log",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1795867690711,
+      "tag": "0020_location_coordinates",
+      "breakpoints": true
     }
   ]
 }

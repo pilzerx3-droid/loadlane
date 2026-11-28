@@ -9,6 +9,12 @@ import { OrganizationsModule } from "./modules/organizations/index.ts";
 import { PLANNED_MODULES } from "./modules/planned-modules.ts";
 import { AccessGuard, UsersPermissionsModule } from "./modules/users-permissions/index.ts";
 import type { LogOptions } from "./platform/logging.ts";
+import {
+  UnconfiguredGeocodingProvider,
+  UnconfiguredRoutingProvider,
+  type GeocodingProvider,
+  type RoutingProvider,
+} from "./platform/geo-providers.ts";
 import { UnconfiguredMailProvider, type MailProvider } from "./platform/mail.ts";
 import { UnconfiguredObjectStorage, type ObjectStorage } from "./platform/object-storage.ts";
 import { PlatformModule } from "./platform/platform.module.ts";
@@ -32,6 +38,10 @@ export interface AppModuleOptions {
   storage?: ObjectStorage;
   /** Default: a provider that answers 503 (mail_not_configured). */
   mail?: MailProvider;
+  /** Default: answers 503 (geocoding_not_configured). */
+  geocoding?: GeocodingProvider;
+  /** Default: answers 503 (routing_not_configured). */
+  routing?: RoutingProvider;
 }
 
 export function withDefaults(options: AppModuleOptions) {
@@ -42,6 +52,8 @@ export function withDefaults(options: AppModuleOptions) {
     log: options.log ?? { level: "info" },
     storage: options.storage ?? new UnconfiguredObjectStorage(),
     mail: options.mail ?? new UnconfiguredMailProvider(),
+    geocoding: options.geocoding ?? new UnconfiguredGeocodingProvider(),
+    routing: options.routing ?? new UnconfiguredRoutingProvider(),
   };
 }
 
@@ -63,6 +75,8 @@ export class AppModule {
           log: options.log,
           storage: options.storage,
           mail: options.mail,
+          geocoding: options.geocoding,
+          routing: options.routing,
         }),
         ThrottlerModule.forRoot({
           throttlers: [

@@ -40,3 +40,6 @@ next-env.d.ts
 
 # esbuild output of the API start-up smoke test
 dist-smoke/
+
+# Copied from maplibre-gl by apps/web/scripts/copy-map-worker.mjs
+apps/web/public/maplibre/

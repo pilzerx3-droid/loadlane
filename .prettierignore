@@ -8,3 +8,5 @@ coverage/
 docs/masterprompt.md
 # Reference snapshots of the prototype and landing page (kept as published)
 docs/reference/prototype/*.html
+# Copied from maplibre-gl at build time
+apps/web/public/maplibre/

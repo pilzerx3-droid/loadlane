@@ -26,6 +26,8 @@ export interface ApiConfig {
   appUrl: string;
   /** SMTP server for outgoing e-mail (ADR 0021). Left out when MAIL_SMTP_URL is not set; sending then answers 503. */
   mail?: { smtpUrl: string; from: string };
+  /** OpenRouteService key for address lookup and routing (ADR 0021). Left out: both answer 503. */
+  ors?: { apiKey: string; baseUrl: string };
   /** S3-compatible file storage. Left out when S3_ENDPOINT is not set; document uploads then answer 503. */
   s3?: {
     endpoint: string;
@@ -60,6 +62,8 @@ const envSchema = z.object({
   RATE_LIMIT_REDIS_URL: z.string().min(1).optional(),
   OPENAPI_ENABLED: z.enum(["true", "false"]).optional(),
   MAX_ORGANIZATIONS_PER_USER: z.coerce.number().int().min(1).max(1000).default(3),
+  ORS_API_KEY: z.string().min(10).optional(),
+  ORS_BASE_URL: z.url().default("https://api.openrouteservice.org"),
   APP_URL: z.url().default("http://localhost:3000"),
   MAIL_SMTP_URL: z
     .string()
@@ -104,6 +108,9 @@ export function loadApiConfig(env: Record<string, string | undefined>): ApiConfi
     ...(values.RATE_LIMIT_REDIS_URL ? { rateLimitRedisUrl: values.RATE_LIMIT_REDIS_URL } : {}),
     appUrl: values.APP_URL.replace(/\/+$/, ""),
     ...mailSettings(values),
+    ...(values.ORS_API_KEY
+      ? { ors: { apiKey: values.ORS_API_KEY, baseUrl: values.ORS_BASE_URL } }
+      : {}),
     ...s3Settings(values),
   };
 }

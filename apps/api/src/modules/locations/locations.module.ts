@@ -25,7 +25,7 @@ import { LOCATION_REPOSITORY } from "./tokens.ts";
             "timezone",
             "notes",
           ],
-          readOnlyFields: ["country"],
+          readOnlyFields: ["country", "latitude", "longitude", "geocodedAt", "geocodeSource"],
           searchFields: ["name", "addressLine1", "city", "postalCode"],
         }),
     },

@@ -49,6 +49,10 @@ export const locationSchema = z.object({
   country: z.string(),
   timezone: z.string(),
   notes: z.string().nullable(),
+  latitude: z.number().nullable().describe("Set by an address lookup or entered by a person"),
+  longitude: z.number().nullable(),
+  geocodedAt: z.iso.datetime().nullable(),
+  geocodeSource: z.enum(["provider", "manual"]).nullable(),
 });
 
 export type LocationResponse = z.infer<typeof locationSchema>;

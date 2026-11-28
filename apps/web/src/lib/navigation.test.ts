@@ -29,7 +29,7 @@ describe("navigationFor", () => {
   });
 
   it("shows transports to people who may read them", () => {
-    expect(labels(["transport:read"])).toEqual(["Overview", "Transports", "Alerts"]);
+    expect(labels(["transport:read"])).toEqual(["Overview", "Transports", "Map", "Alerts"]);
     expect(labels(["transport:manage"])).toEqual(["Overview"]);
   });
 
@@ -53,6 +53,7 @@ describe("navigationFor", () => {
     expect(NAV_ITEMS.map((item) => item.href)).toEqual([
       "/",
       "/transports",
+      "/map",
       "/alerts",
       "/calculations",
       "/tariffs",

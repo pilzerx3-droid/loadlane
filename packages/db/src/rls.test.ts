@@ -685,6 +685,44 @@ describe("tenant isolation", () => {
     );
   });
 
+  it("location: coordinates are all-or-nothing and are cleared when the address changes", async () => {
+    await expectPgError(
+      run({ organizationId: orgA }, (c) => c.query("UPDATE location SET latitude = 32.7")),
+      "23514",
+    );
+    await expectPgError(
+      run({ organizationId: orgA }, (c) =>
+        c.query(
+          "UPDATE location SET latitude = 95, longitude = 0, geocoded_at = now(), geocode_source = 'manual'",
+        ),
+      ),
+      "23514",
+    );
+    const set =
+      "UPDATE location SET latitude = 32.78, longitude = -96.8, geocoded_at = now(), geocode_source = 'provider'";
+    await run({ organizationId: orgA }, (c) => c.query(set));
+    // A change that is not about the address keeps the coordinates.
+    await run({ organizationId: orgA }, (c) => c.query("UPDATE location SET notes = 'dock 3'"));
+    expect(await count({ organizationId: orgA }, "FROM location WHERE latitude IS NOT NULL")).toBe(
+      1,
+    );
+    // A new address without new coordinates removes the old ones: they described another place.
+    await run({ organizationId: orgA }, (c) => c.query("UPDATE location SET city = 'Plano'"));
+    expect(await count({ organizationId: orgA }, "FROM location WHERE latitude IS NOT NULL")).toBe(
+      0,
+    );
+    // A new address together with new coordinates keeps the new ones.
+    await run({ organizationId: orgA }, (c) =>
+      c.query(
+        "UPDATE location SET city = 'Irving', latitude = 32.81, longitude = -96.95, geocoded_at = now(), geocode_source = 'manual'",
+      ),
+    );
+    expect(await count({ organizationId: orgA }, "FROM location WHERE latitude = 32.81")).toBe(1);
+    expect(await count({ organizationId: orgB }, "FROM location WHERE latitude IS NOT NULL")).toBe(
+      0,
+    );
+  });
+
   it("mail_log: append only, and an invalid status or address fails", async () => {
     await expectPgError(
       run({ organizationId: orgA }, (c) => c.query("UPDATE mail_log SET status = 'failed'")),

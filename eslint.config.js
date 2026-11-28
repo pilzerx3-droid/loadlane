@@ -4,7 +4,14 @@ import tseslint from "typescript-eslint";
 
 export default tseslint.config(
   {
-    ignores: ["**/node_modules/", "**/dist/", "**/.next/", "**/coverage/", "**/migrations/meta/"],
+    ignores: [
+      "**/node_modules/",
+      "**/public/maplibre/",
+      "**/dist/",
+      "**/.next/",
+      "**/coverage/",
+      "**/migrations/meta/",
+    ],
   },
   eslint.configs.recommended,
   ...tseslint.configs.recommendedTypeChecked,

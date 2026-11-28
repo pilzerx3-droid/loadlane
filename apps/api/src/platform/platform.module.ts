@@ -7,9 +7,17 @@ import { HealthController } from "./health.ts";
 import { loggerModule, type LogOptions } from "./logging.ts";
 import { OpenApiController, OpenApiService } from "./openapi.ts";
 import { ProblemFilter } from "./problem.ts";
+import type { GeocodingProvider, RoutingProvider } from "./geo-providers.ts";
 import type { MailProvider } from "./mail.ts";
 import type { ObjectStorage } from "./object-storage.ts";
-import { API_CONFIG, APP_POOL, MAIL_PROVIDER, OBJECT_STORAGE } from "./tokens.ts";
+import {
+  API_CONFIG,
+  APP_POOL,
+  GEOCODING_PROVIDER,
+  MAIL_PROVIDER,
+  OBJECT_STORAGE,
+  ROUTING_PROVIDER,
+} from "./tokens.ts";
 
 export interface PlatformOptions {
   config: RuntimeConfig;
@@ -19,6 +27,8 @@ export interface PlatformOptions {
   log: LogOptions;
   storage: ObjectStorage;
   mail: MailProvider;
+  geocoding: GeocodingProvider;
+  routing: RoutingProvider;
 }
 
 /**
@@ -40,6 +50,8 @@ export class PlatformModule {
         { provide: API_CONFIG, useValue: options.config },
         { provide: OBJECT_STORAGE, useValue: options.storage },
         { provide: MAIL_PROVIDER, useValue: options.mail },
+        { provide: GEOCODING_PROVIDER, useValue: options.geocoding },
+        { provide: ROUTING_PROVIDER, useValue: options.routing },
         { provide: APP_FILTER, useClass: ProblemFilter },
         AccessDeclarationCheck,
         ...(options.openApiEnabled ? [OpenApiService] : []),
@@ -49,6 +61,8 @@ export class PlatformModule {
         API_CONFIG,
         OBJECT_STORAGE,
         MAIL_PROVIDER,
+        GEOCODING_PROVIDER,
+        ROUTING_PROVIDER,
         ...(options.openApiEnabled ? [OpenApiService] : []),
       ],
     };
