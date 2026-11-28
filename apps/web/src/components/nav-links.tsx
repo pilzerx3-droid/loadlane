@@ -2,6 +2,7 @@
 
 import {
   AlertTriangle,
+  BarChart3,
   Building2,
   Calculator,
   FileText,
@@ -28,6 +29,7 @@ const ICONS: Record<NavIcon, LucideIcon> = {
   quotes: FileText,
   spot: Gavel,
   tariffs: Tags,
+  reports: BarChart3,
   transports: Package,
   customers: Building2,
   carriers: Truck,

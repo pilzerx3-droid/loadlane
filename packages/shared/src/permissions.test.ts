@@ -81,6 +81,7 @@ describe("permission matrix", () => {
       "spot:read",
       "tariff:read",
       "tariff:manage",
+      "report:read",
     ],
     carrier_user: ["organization:read"],
   };

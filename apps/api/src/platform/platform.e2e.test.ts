@@ -368,6 +368,7 @@ describe("OpenAPI document", () => {
       "QuoteController.list",
       "QuoteController.pdf",
       "QuoteController.update",
+      "ReportController.commercial",
       "SpotCarrierController.bid",
       "SpotCarrierController.offer",
       "SpotCarrierController.withdraw",
